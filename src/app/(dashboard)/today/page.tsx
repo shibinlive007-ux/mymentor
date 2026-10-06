@@ -1,17 +1,14 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '@/lib/supabase/auth-context';
-import { UPSC_2027_DATES, getDaysUntil, formatSecondsToTimer } from '@/lib/utils';
+import { UPSC_2027_DATES, getDaysUntil } from '@/lib/utils';
 import {
-  Play,
-  Pause,
-  RotateCcw,
   CheckCircle2,
   Circle,
-  Clock,
   Sparkles,
   Sun,
+  Moon,
   ArrowRight,
   ArrowUp,
   ArrowDown,
@@ -19,13 +16,23 @@ import {
   Trash2,
   Plus,
   Check,
-  ShieldCheck
+  ShieldCheck,
+  History,
+  X
 } from 'lucide-react';
 import Link from 'next/link';
 import { DailyPlan, PlannerTask, CheckinInput, TaskStatus } from '@/types/planner';
+import { StudySession, EndOfDayWrapup } from '@/types/session';
 import { generateDailyPlan } from '@/lib/planner/daily-scheduler';
 import { MorningCheckinModal } from '@/components/planner/MorningCheckinModal';
 import { TaskEditModal } from '@/components/planner/TaskEditModal';
+import { StudyTimerWidget } from '@/components/timer/StudyTimerWidget';
+import { EndOfDayWrapupModal } from '@/components/planner/EndOfDayWrapupModal';
+import {
+  getTaskCompletionMessage,
+  EncouragementMessage
+} from '@/lib/encouragement/messages';
+import { getTodaySessions } from '@/lib/sessions/session-manager';
 
 const DEFAULT_INITIAL_PLAN: DailyPlan = {
   id: 'plan-default',
@@ -119,14 +126,22 @@ export default function TodayPage() {
     return DEFAULT_INITIAL_PLAN;
   });
 
+  // Sessions list
+  const [todaySessions, setTodaySessions] = useState<StudySession[]>(() => {
+    return typeof window !== 'undefined' ? getTodaySessions() : [];
+  });
+  const [showSessionsLog, setShowSessionsLog] = useState<boolean>(false);
+
   // Modals state
   const [isCheckinOpen, setIsCheckinOpen] = useState<boolean>(false);
+  const [isWrapupOpen, setIsWrapupOpen] = useState<boolean>(false);
   const [editingTask, setEditingTask] = useState<PlannerTask | null>(null);
 
-  // Active task & Timer state
+  // Encouragement notification banner
+  const [encouragement, setEncouragement] = useState<EncouragementMessage | null>(null);
+
+  // Active task state
   const [activeTaskId, setActiveTaskId] = useState<string>('task-2');
-  const [timerSeconds, setTimerSeconds] = useState<number>(1800); // 30 mins
-  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
 
   // Countdown calculations
   const daysToPrelims = getDaysUntil(UPSC_2027_DATES.PRELIMS);
@@ -139,23 +154,9 @@ export default function TodayPage() {
     }
   };
 
-  // Timer interval effect
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isTimerRunning) {
-      interval = setInterval(() => {
-        setTimerSeconds((prev) => prev + 1);
-      }, 1000);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isTimerRunning]);
-
   // Handlers for Plan Generation via Morning Check-in
   const handleGeneratePlan = async (checkin: CheckinInput) => {
     try {
-      // Call Next.js AI Plan Generator route
       const res = await fetch('/api/ai/plan-generator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -171,8 +172,6 @@ export default function TodayPage() {
           updatePlan(data.plan);
           if (data.plan.tasks.length > 0) {
             setActiveTaskId(data.plan.tasks[0].id);
-            setTimerSeconds(0);
-            setIsTimerRunning(false);
           }
           return;
         }
@@ -189,8 +188,6 @@ export default function TodayPage() {
     updatePlan(fallback);
     if (fallback.tasks.length > 0) {
       setActiveTaskId(fallback.tasks[0].id);
-      setTimerSeconds(0);
-      setIsTimerRunning(false);
     }
   };
 
@@ -206,9 +203,12 @@ export default function TodayPage() {
 
   // Task Completion Toggle
   const toggleTaskStatus = (id: string) => {
+    const task = plan.tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    const nextStatus: TaskStatus = task.status === 'completed' ? 'pending' : 'completed';
     const updatedTasks = plan.tasks.map((t) => {
       if (t.id === id) {
-        const nextStatus: TaskStatus = t.status === 'completed' ? 'pending' : 'completed';
         return {
           ...t,
           status: nextStatus,
@@ -219,12 +219,55 @@ export default function TodayPage() {
     });
 
     const totalDone = updatedTasks.reduce((acc, t) => acc + t.completedMinutes, 0);
+    const completedCount = updatedTasks.filter((t) => t.status === 'completed').length;
+
     updatePlan({
       ...plan,
       tasks: updatedTasks,
       totalCompletedMinutes: totalDone,
       updatedAt: new Date().toISOString(),
     });
+
+    // Trigger genuine encouragement if task completed
+    if (nextStatus === 'completed') {
+      const msg = getTaskCompletionMessage(task, completedCount, updatedTasks.length);
+      setEncouragement(msg);
+    }
+  };
+
+  // Session Completed / Logged via Timer Widget
+  const handleSessionLogged = (session: StudySession) => {
+    setTodaySessions((prev) => [session, ...prev]);
+  };
+
+  const handleTaskTimerCompleted = (taskId: string, sessionMinutes: number) => {
+    const target = plan.tasks.find((t) => t.id === taskId);
+    if (!target) return;
+
+    const updatedTasks = plan.tasks.map((t) => {
+      if (t.id === taskId) {
+        const newCompleted = Math.min(t.durationMinutes, t.completedMinutes + sessionMinutes);
+        return {
+          ...t,
+          completedMinutes: newCompleted,
+          status: (newCompleted >= t.durationMinutes ? 'completed' : 'in_progress') as TaskStatus,
+        };
+      }
+      return t;
+    });
+
+    const totalDone = updatedTasks.reduce((acc, t) => acc + t.completedMinutes, 0);
+    const completedCount = updatedTasks.filter((t) => t.status === 'completed').length;
+
+    updatePlan({
+      ...plan,
+      tasks: updatedTasks,
+      totalCompletedMinutes: totalDone,
+      updatedAt: new Date().toISOString(),
+    });
+
+    const msg = getTaskCompletionMessage(target, completedCount, updatedTasks.length);
+    setEncouragement(msg);
   };
 
   // Reorder Tasks (Move Up / Down)
@@ -236,7 +279,6 @@ export default function TodayPage() {
     const [moved] = newTasks.splice(index, 1);
     newTasks.splice(targetIndex, 0, moved);
 
-    // Re-index
     const reindexed = newTasks.map((t, idx) => ({ ...t, orderIndex: idx + 1 }));
     updatePlan({ ...plan, tasks: reindexed });
   };
@@ -286,7 +328,19 @@ export default function TodayPage() {
     setEditingTask(newTask);
   };
 
-  // Math summary
+  // Wrap-up Completion Handler
+  const handleWrapupCompleted = (wrapup: EndOfDayWrapup) => {
+    if (wrapup.pendingAction === 'roll_forward') {
+      // In next day's draft, roll forward uncompleted tasks
+    }
+    setEncouragement({
+      title: '🌙 Day Wrapped Successfully',
+      body: 'Today’s loops are closed. Get restorative sleep to consolidate what you learned today.',
+      category: 'rest',
+    });
+  };
+
+  // Calculations
   const totalPlannedMinutes = plan.tasks.reduce((sum, t) => sum + t.durationMinutes, 0);
   const totalCompletedMinutes = plan.tasks.reduce((sum, t) => sum + t.completedMinutes, 0);
   const completionPercent =
@@ -295,7 +349,7 @@ export default function TodayPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-8 animate-fadeIn">
-      {/* 1. Calm Top Banner: Days Countdown & Encouragement */}
+      {/* 1. Calm Top Banner: Days Countdown & Actions */}
       <div className="rounded-2xl bg-gradient-to-br from-[var(--surface-raised)] to-[var(--surface-hover)] border border-[var(--border)] p-4 shadow-xs">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -304,7 +358,7 @@ export default function TodayPage() {
             </div>
             <div>
               <h2 className="text-sm font-semibold text-[var(--foreground)]">
-                Good morning, {profile?.full_name?.split(' ')[0] || 'Aspirant'}
+                Good day, {profile?.full_name?.split(' ')[0] || 'Aspirant'}
               </h2>
               <p className="text-xs text-[var(--foreground-muted)]">
                 {daysToPrelims} days to Prelims 2027 • Consistency over intensity
@@ -321,14 +375,38 @@ export default function TodayPage() {
               <Sparkles className="w-3.5 h-3.5 text-[var(--primary)]" />
               <span>Check-in</span>
             </button>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--primary)] bg-[var(--primary-light)] px-2.5 py-1 rounded-full hidden sm:inline-block">
-              {examMode} mode
-            </span>
+            <button
+              type="button"
+              onClick={() => setIsWrapupOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 transition-colors shadow-xs"
+            >
+              <Moon className="w-3.5 h-3.5" />
+              <span>Wrap Up</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Proposal State Banner (Human-in-the-Loop Principle) */}
+      {/* 2. Genuine Encouragement Banner (Appears on task finish / milestones) */}
+      {encouragement && (
+        <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-950 dark:text-emerald-200 flex items-start justify-between gap-3 shadow-xs animate-slideUp">
+          <div className="space-y-0.5">
+            <span className="font-bold block text-emerald-900 dark:text-emerald-300">
+              {encouragement.title}
+            </span>
+            <p className="opacity-90 leading-relaxed">{encouragement.body}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setEncouragement(null)}
+            className="p-1 rounded-full text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* 3. Proposal State Banner (Human-in-the-Loop Principle) */}
       {plan.status === 'proposed' && (
         <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-blue-500/15 border border-emerald-500/30 shadow-xs space-y-3 animate-slideUp">
           <div className="flex items-start justify-between gap-3">
@@ -356,7 +434,6 @@ export default function TodayPage() {
             </button>
           </div>
 
-          {/* Mentor Rationale */}
           <div className="p-3 rounded-xl bg-[var(--surface)]/90 border border-[var(--border)] text-xs text-[var(--foreground)]">
             <span className="font-semibold text-[var(--primary)] mr-1.5">Mentor Note:</span>
             {plan.mentorRationale}
@@ -379,7 +456,7 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* 3. Primary Focus: Single Progress Ring & Today's Target */}
+      {/* 4. Primary Focus: Single Progress Ring & Today's Target */}
       <div className="rounded-2xl bg-[var(--surface)] border border-[var(--border)] p-5 shadow-xs flex items-center justify-between gap-4">
         <div>
           <span className="text-xs font-semibold text-[var(--foreground-muted)] uppercase tracking-wide">
@@ -421,58 +498,14 @@ export default function TodayPage() {
         </div>
       </div>
 
-      {/* 4. Active Study Session Timer */}
-      {activeTask && (
-        <div className="rounded-2xl bg-[var(--surface-raised)] border border-[var(--border)] p-4 shadow-xs">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-1.5 text-xs font-medium text-[var(--foreground-muted)]">
-              <Clock className="w-3.5 h-3.5 text-[var(--primary)]" />
-              <span>Active Study Session</span>
-            </div>
-            <span className="text-xs font-medium text-[var(--primary)] bg-[var(--primary-light)] px-2 py-0.5 rounded-md">
-              {activeTask.subjectName}
-            </span>
-          </div>
+      {/* 5. Phase 5 Study Timer Widget (Stopwatch, Pomodoro & Session Logging) */}
+      <StudyTimerWidget
+        activeTask={activeTask}
+        onSessionLogged={handleSessionLogged}
+        onTaskCompleted={handleTaskTimerCompleted}
+      />
 
-          <p className="text-sm font-semibold text-[var(--foreground)] truncate mb-3">
-            {activeTask.topicTitle}
-          </p>
-
-          <div className="flex items-center justify-between bg-[var(--surface)] border border-[var(--border)] rounded-xl p-3">
-            <div className="font-mono text-2xl font-bold tracking-tight text-[var(--foreground)]">
-              {formatSecondsToTimer(timerSeconds)}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsTimerRunning(!isTimerRunning)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-semibold shadow-xs transition-colors"
-              >
-                {isTimerRunning ? (
-                  <>
-                    <Pause className="w-3.5 h-3.5" /> Pause
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 fill-white" /> Start
-                  </>
-                )}
-              </button>
-              <button
-                type="button"
-                onClick={() => setTimerSeconds(0)}
-                className="p-1.5 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
-                title="Reset session"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Today's Plan (3-6 tasks, uncluttered, interactive) */}
+      {/* 6. Today's Plan (3-6 tasks, uncluttered, interactive) */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
@@ -565,7 +598,7 @@ export default function TodayPage() {
                     </p>
                   </div>
 
-                  {/* Task Actions (Reorder, Edit, Delete) */}
+                  {/* Task Actions */}
                   <div
                     className="flex items-center gap-1 opacity-80 sm:opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1"
                     onClick={(e) => e.stopPropagation()}
@@ -612,22 +645,68 @@ export default function TodayPage() {
         </div>
       </div>
 
-      {/* 6. Mentor Re-plan & Check-in Nudge */}
+      {/* 7. Study Session Log (Progressive Disclosure) */}
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={() => setShowSessionsLog(!showSessionsLog)}
+          className="flex items-center justify-between w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]/60 text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+        >
+          <span className="flex items-center gap-2">
+            <History className="w-3.5 h-3.5 text-[var(--primary)]" />
+            <span>Today&apos;s Focus Sessions ({todaySessions.length} logged)</span>
+          </span>
+          <span className="text-[11px] text-[var(--foreground-muted)]">
+            {showSessionsLog ? 'Hide' : 'View'}
+          </span>
+        </button>
+
+        {showSessionsLog && (
+          <div className="mt-2 space-y-1.5 p-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs animate-fadeIn">
+            {todaySessions.length === 0 ? (
+              <p className="text-center text-[var(--foreground-muted)] py-2">
+                No individual sessions logged yet today. Start the timer above to record deep work.
+              </p>
+            ) : (
+              todaySessions.map((sess) => (
+                <div
+                  key={sess.id}
+                  className="flex items-center justify-between p-2 rounded-lg bg-[var(--surface-raised)] border border-[var(--border)]"
+                >
+                  <div className="min-w-0">
+                    <span className="font-semibold text-[var(--foreground)] truncate block">
+                      {sess.topicTitle}
+                    </span>
+                    <span className="text-[10px] text-[var(--foreground-muted)]">
+                      {sess.subjectName} • {sess.sessionType.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[var(--primary)] shrink-0 ml-2">
+                    {sess.durationMinutes} min
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 8. End of Day Wrap-up Prompt Banner */}
       <div className="rounded-2xl border border-dashed border-[var(--border)] p-4 text-center bg-[var(--surface-raised)]/60">
-        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[var(--primary-light)] text-[var(--primary)] mb-2">
-          <Sparkles className="w-4 h-4" />
+        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 mb-2">
+          <Moon className="w-4 h-4" />
         </div>
-        <h4 className="text-sm font-semibold text-[var(--foreground)]">Need an adaptive adjustment?</h4>
+        <h4 className="text-sm font-semibold text-[var(--foreground)]">Ready to close today?</h4>
         <p className="text-xs text-[var(--foreground-muted)] max-w-xs mx-auto mt-0.5">
-          Did unexpected meetings or fatigue arise? Update your check-in to reschedule remaining hours.
+          Take 30 seconds to reflect on what got done and pre-draft tomorrow&apos;s baseline plan.
         </p>
         <div className="flex items-center justify-center gap-3 mt-3">
           <button
             type="button"
-            onClick={() => setIsCheckinOpen(true)}
-            className="px-3 py-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-xs font-semibold text-[var(--foreground)] hover:bg-[var(--surface-hover)] shadow-xs transition-colors"
+            onClick={() => setIsWrapupOpen(true)}
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md transition-all active:scale-98"
           >
-            Adjust Morning Check-in
+            Start Evening Wrap-up
           </button>
           <Link
             href="/mentor"
@@ -638,7 +717,7 @@ export default function TodayPage() {
         </div>
       </div>
 
-      {/* Morning Check-in Modal */}
+      {/* Modals */}
       <MorningCheckinModal
         isOpen={isCheckinOpen}
         onClose={() => setIsCheckinOpen(false)}
@@ -646,12 +725,18 @@ export default function TodayPage() {
         initialCheckin={plan.checkin}
       />
 
-      {/* Task Edit Modal */}
       <TaskEditModal
         isOpen={!!editingTask}
         task={editingTask}
         onClose={() => setEditingTask(null)}
         onSave={handleSaveEditedTask}
+      />
+
+      <EndOfDayWrapupModal
+        isOpen={isWrapupOpen}
+        onClose={() => setIsWrapupOpen(false)}
+        plan={plan}
+        onWrapupCompleted={handleWrapupCompleted}
       />
     </div>
   );
