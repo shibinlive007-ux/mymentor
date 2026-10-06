@@ -1,0 +1,209 @@
+import type { SubjectNode } from '@/types/syllabus';
+
+export const PRELIMS_SUBJECTS_SEED: SubjectNode[] = [
+  {
+    id: "prelims.gs1.history",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "History of India & Indian National Movement",
+    node_type: "subject",
+    weight: 1.0,
+    estimated_study_hours: 90,
+    order_index: 1,
+    topics: [
+      {
+        id: "prelims.gs1.history.ancient",
+        title: "Ancient India: Indus Valley to Post-Mauryan",
+        subtopics: [
+          { id: "p-hist-anc-1", title: "Harappan Civilization: Town Planning, Craft, Trade & Religion", weight: 1.0, estimated_hours: 4 },
+          { id: "p-hist-anc-2", title: "Vedic Society, Philosophy, Upanishads & Epics", weight: 1.0, estimated_hours: 4 },
+          { id: "p-hist-anc-3", title: "Buddhism & Jainism: Doctrines, Councils, Sects & Art", weight: 1.2, estimated_hours: 6 },
+          { id: "p-hist-anc-4", title: "Mauryan Empire: Ashokan Edicts, Administration & Dhamma", weight: 1.0, estimated_hours: 5 },
+          { id: "p-hist-anc-5", title: "Guptas & Harshavardhana: Golden Age, Science & Feudalism", weight: 1.0, estimated_hours: 5 }
+        ]
+      },
+      {
+        id: "prelims.gs1.history.medieval",
+        title: "Medieval India: Sultanate to Mughal Decline",
+        subtopics: [
+          { id: "p-hist-med-1", title: "Delhi Sultanate: Administration, Iqta & Market Reforms", weight: 0.8, estimated_hours: 4 },
+          { id: "p-hist-med-2", "title": "Bhakti & Sufi Movements: Saints, Literature & Philosophy", weight: 1.2, estimated_hours: 5 },
+          { id: "p-hist-med-3", title: "Vijayanagara Empire: Governance, Architecture & Foreign Travelers", weight: 1.1, estimated_hours: 4 },
+          { id: "p-hist-med-4", title: "Mughal Empire: Akbar's Mansabdari, Sulh-i-Kul & Land Revenue", weight: 1.0, estimated_hours: 6 },
+          { id: "p-hist-med-5", title: "Marathas & 18th Century Regional Powers", weight: 0.8, estimated_hours: 3 }
+        ]
+      },
+      {
+        id: "prelims.gs1.history.modern",
+        title: "Modern Indian History & Freedom Struggle",
+        subtopics: [
+          { id: "p-hist-mod-1", title: "Early Resistance & 1857 Revolt: Causes, Leaders & Failures", weight: 1.1, estimated_hours: 5 },
+          { id: "p-hist-mod-2", title: "Socio-Religious Reform Movements (19th Century)", weight: 1.1, estimated_hours: 5 },
+          { id: "p-hist-mod-3", title: "Rise of Congress, Moderates & Extremist Phase (1885-1909)", weight: 1.0, estimated_hours: 4 },
+          { id: "p-hist-mod-4", title: "Gandhian Movements: Non-Cooperation, Civil Disobedience & Quit India", weight: 1.3, estimated_hours: 8 },
+          { id: "p-hist-mod-5", title: "Constitutional Developments (Acts of 1909, 1919, 1935)", weight: 1.2, estimated_hours: 6 },
+          { id: "p-hist-mod-6", title: "Partition, Independence & Integration of States", weight: 1.0, estimated_hours: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.gs1.polity",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "Indian Polity & Governance",
+    node_type: "subject",
+    weight: 1.2,
+    estimated_study_hours: 85,
+    order_index: 2,
+    topics: [
+      {
+        id: "prelims.gs1.polity.constitution",
+        title: "Constitutional Framework & Rights",
+        subtopics: [
+          { id: "p-pol-1", title: "Preamble & Historical Underpinnings", weight: 1.0, estimated_hours: 4 },
+          { id: "p-pol-2", title: "Fundamental Rights (Articles 12-35) & Judicial Interpretation", weight: 1.4, estimated_hours: 8 },
+          { id: "p-pol-3", title: "Directive Principles of State Policy & Fundamental Duties", weight: 1.1, estimated_hours: 5 },
+          { id: "p-pol-4", title: "Amendment of Constitution & Basic Structure Doctrine", weight: 1.2, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "prelims.gs1.polity.organs",
+        title: "Union & State Organs",
+        subtopics: [
+          { id: "p-pol-5", title: "President, Governor & Executive Powers", weight: 1.1, estimated_hours: 5 },
+          { id: "p-pol-6", title: "Parliament & State Legislatures: Sessions, Bills, Committees", weight: 1.3, estimated_hours: 8 },
+          { id: "p-pol-7", title: "Supreme Court, High Courts & Judicial Independence", weight: 1.2, estimated_hours: 6 },
+          { id: "p-pol-8", title: "Panchayati Raj & Municipalities (73rd & 74th Amendments)", weight: 1.0, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "prelims.gs1.polity.bodies",
+        title: "Constitutional & Non-Constitutional Bodies",
+        subtopics: [
+          { id: "p-pol-9", title: "Election Commission, CAG, UPSC & Finance Commission", weight: 1.1, estimated_hours: 5 },
+          { id: "p-pol-10", title: "NITI Aayog, NHRC, CIC & Lokpal", weight: 1.0, estimated_hours: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.gs1.geography",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "Indian & World Geography",
+    node_type: "subject",
+    weight: 1.0,
+    estimated_study_hours: 75,
+    order_index: 3,
+    topics: [
+      {
+        id: "prelims.gs1.geography.physical",
+        title: "Physical Geography: Earth & Climate",
+        subtopics: [
+          { id: "p-geo-1", title: "Interior of Earth, Plate Tectonics, Earthquakes & Volcanoes", weight: 1.1, estimated_hours: 6 },
+          { id: "p-geo-2", title: "Atmosphere: Heat Budget, Pressure Belts & Planetary Winds", weight: 1.1, estimated_hours: 5 },
+          { id: "p-geo-3", title: "Monsoon Dynamics, El Niño, La Niña & IOD", weight: 1.3, estimated_hours: 6 },
+          { id: "p-geo-4", title: "Ocean Relief, Currents, Tides & Salinity", weight: 1.0, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "prelims.gs1.geography.indian",
+        title: "Geography of India",
+        subtopics: [
+          { id: "p-geo-5", title: "Physiography: Himalayas, Peninsular Plateau & Coastal Plains", weight: 1.1, estimated_hours: 6 },
+          { id: "p-geo-6", title: "River Systems: Himalayan & Peninsular Drainage", weight: 1.2, estimated_hours: 6 },
+          { id: "p-geo-7", title: "Soils, Natural Vegetation & Mineral Resources", weight: 1.0, estimated_hours: 5 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.gs1.economy",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "Economic & Social Development",
+    node_type: "subject",
+    weight: 1.1,
+    estimated_study_hours: 70,
+    order_index: 4,
+    topics: [
+      {
+        id: "prelims.gs1.economy.macro",
+        title: "Macroeconomics & Monetary Framework",
+        subtopics: [
+          { id: "p-eco-1", title: "National Income Accounting: GDP, GNP & Deflator", weight: 1.0, estimated_hours: 4 },
+          { id: "p-eco-2", title: "Inflation: CPI, WPI, Causes & RBI Monetary Policy", weight: 1.2, estimated_hours: 6 },
+          { id: "p-eco-3", title: "Banking System, NPAs, IBC & Digital Currency", weight: 1.2, estimated_hours: 5 }
+        ]
+      },
+      {
+        id: "prelims.gs1.economy.fiscal",
+        title: "Fiscal Policy, Trade & Agriculture",
+        subtopics: [
+          { id: "p-eco-4", title: "Union Budget: Revenue, Capital, Deficits & FRBM Act", weight: 1.1, estimated_hours: 5 },
+          { id: "p-eco-5", title: "Balance of Payments, Forex, Current Account Deficit & WTO", weight: 1.1, estimated_hours: 5 },
+          { id: "p-eco-6", title: "Agriculture: Cropping Patterns, MSP, PDS & Subsidies", weight: 1.2, estimated_hours: 6 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.gs1.environment",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "Environment, Ecology & Climate Change",
+    node_type: "subject",
+    weight: 1.2,
+    estimated_study_hours: 65,
+    order_index: 5,
+    topics: [
+      {
+        id: "prelims.gs1.env.ecology",
+        title: "Ecology & Biodiversity Conservation",
+        subtopics: [
+          { id: "p-env-1", title: "Ecosystem Concepts: Food Chains, Biomes & Trophic Levels", weight: 1.0, estimated_hours: 4 },
+          { id: "p-env-2", title: "Biodiversity Hotspots, Protected Areas & National Parks", weight: 1.3, estimated_hours: 6 },
+          { id: "p-env-3", title: "IUCN Red List Categories & Endangered Indian Species", weight: 1.2, estimated_hours: 5 }
+        ]
+      },
+      {
+        "id": "prelims.gs1.env.climate",
+        "title": "Pollution & International Conventions",
+        "subtopics": [
+          { id: "p-env-4", title: "Climate Change: Global Warming, Paris Agreement & COP Summits", weight: 1.2, estimated_hours: 5 },
+          { id: "p-env-5", title: "Environmental Acts: EPA 1986, WPA 1972 & Forest Rights", weight: 1.1, estimated_hours: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.csat.reasoning",
+    paper: "CSAT (Paper II)",
+    stage: "csat",
+    subject: "CSAT: Aptitude & Comprehension",
+    node_type: "subject",
+    weight: 0.9,
+    estimated_study_hours: 45,
+    order_index: 6,
+    topics: [
+      {
+        id: "prelims.csat.quant",
+        title: "Quantitative Aptitude & Number Systems",
+        subtopics: [
+          { id: "p-csat-1", title: "Number Systems: Divisibility, Remainder Theorem & Unit Digits", weight: 1.1, estimated_hours: 5 },
+          { id: "p-csat-2", title: "Permutations, Combinations & Probability", weight: 1.0, estimated_hours: 5 },
+          { id: "p-csat-3", title: "Percentages, Profit & Loss, Ratio & Proportions", weight: 1.0, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "prelims.csat.verbal",
+        title: "Reading Comprehension & Logical Reasoning",
+        subtopics: [
+          { id: "p-csat-4", title: "Reading Comprehension: Inference, Assumptions & Crux", weight: 1.2, estimated_hours: 6 },
+          { id: "p-csat-5", title: "Syllogisms, Seating Arrangements & Blood Relations", weight: 1.0, estimated_hours: 4 }
+        ]
+      }
+    ]
+  }
+];

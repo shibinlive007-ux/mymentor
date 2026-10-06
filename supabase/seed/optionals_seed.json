@@ -1,0 +1,91 @@
+[
+  {
+    "id": "optional.psir",
+    "optional_code": "PSIR",
+    "paper": "Optional Paper 1 & 2",
+    "stage": "optional",
+    "subject": "Political Science & International Relations (PSIR)",
+    "node_type": "subject",
+    "weight": 1.2,
+    "estimated_study_hours": 150,
+    "order_index": 5,
+    "topics": [
+      {
+        "id": "opt.psir.theory",
+        "title": "Paper 1: Political Theory & Indian Politics",
+        "subtopics": [
+          { "id": "opt-psir-1", "title": "Western Political Thought: Plato, Aristotle, Machiavelli, Hobbes, Locke, Marx, Gramsci", "weight": 1.2, "estimated_hours": 8 },
+          { "id": "opt-psir-2", "title": "Indian Political Thought: Kautilya, Gandhi, Ambedkar, MN Roy", "weight": 1.1, "estimated_hours": 6 },
+          { "id": "opt-psir-3", "title": "Indian Nationalism, Constitutionalism & Grassroots Democracy", "weight": 1.0, "estimated_hours": 6 }
+        ]
+      },
+      {
+        "id": "opt.psir.ir",
+        "title": "Paper 2: Comparative Politics & International Relations",
+        "subtopics": [
+          { "id": "opt-psir-4", "title": "Theories of IR: Realism, Liberalism, Constructivism & Feminist Perspectives", "weight": 1.2, "estimated_hours": 8 },
+          { "id": "opt-psir-5", "title": "India and the World Order: Nuclear Doctrine, NAM 2.0 & Global South", "weight": 1.2, "estimated_hours": 7 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "optional.geography",
+    "optional_code": "GEOGRAPHY",
+    "paper": "Optional Paper 1 & 2",
+    "stage": "optional",
+    "subject": "Geography Optional",
+    "node_type": "subject",
+    "weight": 1.2,
+    "estimated_study_hours": 150,
+    "order_index": 6,
+    "topics": [
+      {
+        "id": "opt.geo.principles",
+        "title": "Paper 1: Principles of Geography",
+        "subtopics": [
+          { "id": "opt-geo-1", "title": "Geomorphology: Slopes, Cycles of Erosion (Davis & Penck), Channel Morphology", "weight": 1.2, "estimated_hours": 8 },
+          { "id": "opt-geo-2", "title": "Climatology: Koppen & Thornthwaite Classifications, Hydrological Cycle", "weight": 1.1, "estimated_hours": 7 },
+          { "id": "opt-geo-3", "title": "Human Geography: Models, Theories and Laws in Human Geography", "weight": 1.2, "estimated_hours": 8 }
+        ]
+      },
+      {
+        "id": "opt.geo.india",
+        "title": "Paper 2: Geography of India",
+        "subtopics": [
+          { "id": "opt-geo-4", "title": "Physical Setting, Resources, Agriculture, Industry & Regional Development", "weight": 1.1, "estimated_hours": 9 },
+          { "id": "opt-geo-5", "title": "Contemporary Issues: Environmental Hazards, Border Area Development", "weight": 1.0, "estimated_hours": 6 }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "optional.sociology",
+    "optional_code": "SOCIOLOGY",
+    "paper": "Optional Paper 1 & 2",
+    "stage": "optional",
+    "subject": "Sociology Optional",
+    "node_type": "subject",
+    "weight": 1.2,
+    "estimated_study_hours": 140,
+    "order_index": 7,
+    "topics": [
+      {
+        "id": "opt.soc.fundamentals",
+        "title": "Paper 1: Fundamentals of Sociology",
+        "subtopics": [
+          { "id": "opt-soc-1", "title": "Sociological Thinkers: Marx, Durkheim, Weber, Parsons, Merton, Mead", "weight": 1.3, "estimated_hours": 10 },
+          { "id": "opt-soc-2", "title": "Stratification and Mobility: Concepts, Theories and Dimensions", "weight": 1.1, "estimated_hours": 7 }
+        ]
+      },
+      {
+        "id": "opt.soc.india",
+        "title": "Paper 2: Indian Society - Structure and Change",
+        "subtopics": [
+          { "id": "opt-soc-3", "title": "Perspectives on Indian Society: Indology (Ghurye), Structural Functionalism (Srinivas)", "weight": 1.2, "estimated_hours": 8 },
+          { "id": "opt-soc-4", "title": "Caste System, Agrarian Social Structure & Social Movements in Modern India", "weight": 1.1, "estimated_hours": 8 }
+        ]
+      }
+    ]
+  }
+]
