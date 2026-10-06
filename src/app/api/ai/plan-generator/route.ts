@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
       try {
         const openai = new OpenAI({ apiKey });
 
-        const systemPrompt = `You are the lead academic mentor for UPSC Civil Services Examination 2027.
+        const systemPrompt = `You are "My Mentor", the lead academic mentor for UPSC Civil Services Examination 2027.
 You generate personalized, grounded daily study plans following strict pedagogical principles:
 1. Candidate energy & mood: On low energy (mood <= 2 or hours < 3.5), enforce a Minimum Viable Day (2-3 tasks max, light review and current affairs only, no heavy new topics).
 2. Spaced Repetition: Prioritize due revisions (intervals of 1, 7, 21, 45 days).

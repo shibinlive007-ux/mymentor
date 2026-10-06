@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/supabase/auth-context';
-import { Sparkles, ArrowRight, Mail, User } from 'lucide-react';
+import { ArrowRight, Mail, User } from 'lucide-react';
 import { MobileContainer } from '@/components/layout/MobileContainer';
 
 export default function SignUpPage() {
@@ -28,14 +29,19 @@ export default function SignUpPage() {
     <MobileContainer>
       <div className="flex-1 flex flex-col justify-center px-6 py-12">
         <div className="text-center space-y-2 mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[var(--primary-light)] text-[var(--primary)] mb-2 shadow-xs">
-            <Sparkles className="w-6 h-6" />
-          </div>
+          <Image
+            src="/logo.png"
+            alt="My Mentor"
+            width={56}
+            height={56}
+            className="w-14 h-14 object-contain mx-auto mb-2 drop-shadow-xs"
+            priority
+          />
           <h1 className="text-2xl font-extrabold tracking-tight text-[var(--foreground)]">
-            Begin Your 2027 Journey
+            Join My Mentor
           </h1>
           <p className="text-xs text-[var(--foreground-muted)] max-w-xs mx-auto">
-            7 days free trial. No credit card required.
+            Adaptive daily planner &amp; study system for UPSC CSE 2027.
           </p>
         </div>
 

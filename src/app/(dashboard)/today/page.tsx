@@ -712,7 +712,7 @@ export default function TodayPage() {
             href="/mentor"
             className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--primary)] hover:underline"
           >
-            Ask AI Mentor <ArrowRight className="w-3.5 h-3.5" />
+            Ask My Mentor <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>

@@ -1,7 +1,7 @@
-# UPSC 2027 AI Mentor
+# My Mentor — UPSC 2027 Adaptive Study System
 
 A production-quality web app built for UPSC Civil Services Examination (CSE) 2027 aspirants.
-It is an adaptive personal study planner, syllabus coverage tracker, study timer, revision manager, and grounded AI mentor.
+**My Mentor** is an adaptive personal study planner, syllabus coverage tracker, study timer, revision manager, and grounded mentor.
 
 > [!IMPORTANT]
 > **Syllabus Seed Verification Notice**:

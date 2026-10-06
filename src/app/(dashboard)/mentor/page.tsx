@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import {
   Sparkles,
   Send,
@@ -96,18 +97,16 @@ export default function MentorPage() {
     <div className="flex flex-col h-[calc(100vh-135px)] pb-4">
       {/* Grounded Mentor Context Header */}
       <div className="rounded-xl p-3 bg-[var(--surface-raised)] border border-[var(--border)] mb-3 text-xs flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-[var(--primary-light)] text-[var(--primary)] flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5" />
-          </div>
+        <div className="flex items-center gap-2.5">
+          <Image src="/logo.png" alt="My Mentor" width={28} height={28} className="w-7 h-7 object-contain rounded-md" />
           <div>
-            <span className="font-semibold text-[var(--foreground)]">Grounded AI Mentor</span>
+            <span className="font-bold text-[var(--foreground)] text-sm">My Mentor</span>
             <span className="text-[var(--foreground-muted)] block text-[10px]">
               Grounded in your 2027 plan • Human-in-the-loop approval
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-[11px] text-[var(--primary)] font-medium">
+        <div className="flex items-center gap-1 text-[11px] text-[var(--primary)] font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
           <ShieldCheck className="w-3.5 h-3.5" />
           <span>Active</span>
         </div>

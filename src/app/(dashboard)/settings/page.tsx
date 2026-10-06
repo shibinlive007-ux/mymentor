@@ -243,7 +243,7 @@ export default function SettingsPage() {
               <BrainCircuit className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-xs font-bold text-[var(--foreground)]">AI Mentor Memory</h3>
+              <h3 className="text-xs font-bold text-[var(--foreground)]">My Mentor Memory</h3>
               <p className="text-[11px] text-[var(--foreground-muted)]">
                 {memories.length} facts remembered across your prep
               </p>

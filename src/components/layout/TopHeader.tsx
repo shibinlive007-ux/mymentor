@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/lib/supabase/auth-context';
 import { ExamMode } from '@/types/database.types';
 import { Flame, Settings } from 'lucide-react';
@@ -20,8 +21,18 @@ export function TopHeader() {
       <div className="flex items-center justify-between gap-2">
         {/* Brand & Target */}
         <div className="flex items-center gap-2">
-          <Link href="/today" className="font-bold text-base tracking-tight text-[var(--foreground)] hover:opacity-80 transition-opacity">
-            UPSC <span className="text-[var(--primary)] font-extrabold">2027</span>
+          <Link href="/today" className="flex items-center gap-2 hover:opacity-90 transition-opacity">
+            <Image
+              src="/logo.png"
+              alt="My Mentor Logo"
+              width={24}
+              height={24}
+              className="w-6 h-6 object-contain rounded-md"
+              priority
+            />
+            <span className="font-bold text-base tracking-tight text-[var(--foreground)]">
+              My <span className="text-[var(--primary)] font-extrabold">Mentor</span>
+            </span>
           </Link>
 
           {/* Streak indicator */}

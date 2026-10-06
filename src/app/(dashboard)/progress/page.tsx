@@ -119,7 +119,7 @@ export default function ProgressPage() {
               Neglected Subject Warning: Ethics (GS IV)
             </h4>
             <p className="text-amber-800 dark:text-amber-300 mt-0.5 leading-relaxed">
-              You haven&apos;t revised Case Studies or Ethics theory in 7 days. Your AI Mentor will propose a lightweight 45-minute slot tomorrow.
+              You haven&apos;t revised Case Studies or Ethics theory in 7 days. My Mentor will propose a lightweight 45-minute slot tomorrow.
             </p>
           </div>
         </div>
