@@ -18,21 +18,94 @@ import {
   Check,
   ShieldCheck,
   History,
+  RotateCcw,
   X
 } from 'lucide-react';
 import Link from 'next/link';
 import { DailyPlan, PlannerTask, CheckinInput, TaskStatus } from '@/types/planner';
 import { StudySession, EndOfDayWrapup } from '@/types/session';
+import { SubtopicUserProgress } from '@/types/syllabus';
+import { RecoveryProposal } from '@/types/revision';
 import { generateDailyPlan } from '@/lib/planner/daily-scheduler';
+import { getRevisionHealthSummary } from '@/lib/revision/revision-engine';
 import { MorningCheckinModal } from '@/components/planner/MorningCheckinModal';
 import { TaskEditModal } from '@/components/planner/TaskEditModal';
 import { StudyTimerWidget } from '@/components/timer/StudyTimerWidget';
 import { EndOfDayWrapupModal } from '@/components/planner/EndOfDayWrapupModal';
+import { RecoveryProposalCard } from '@/components/revision/RecoveryProposalCard';
+import { RevisionManagerSheet } from '@/components/revision/RevisionManagerSheet';
 import {
   getTaskCompletionMessage,
   EncouragementMessage
 } from '@/lib/encouragement/messages';
 import { getTodaySessions } from '@/lib/sessions/session-manager';
+
+const DEFAULT_PROGRESS_MAP: Record<string, SubtopicUserProgress> = {
+  'p-pol-2': {
+    subtopicId: 'p-pol-2',
+    ncertRead: true,
+    standardBookRead: true,
+    standardBookName: 'Laxmikanth Ch 7',
+    coachingAttended: true,
+    extraSources: '',
+    notesMade: true,
+    currentAffairsLinked: true,
+    pyqSolvedCount: 25,
+    mcqPracticeDone: true,
+    revisionCount: 1,
+    lastRevisedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
+    confidenceScore: 4,
+    completionPercentage: 86.7,
+  },
+  'p-hist-mod-1': {
+    subtopicId: 'p-hist-mod-1',
+    ncertRead: true,
+    standardBookRead: true,
+    standardBookName: 'Spectrum',
+    coachingAttended: true,
+    extraSources: '',
+    notesMade: true,
+    currentAffairsLinked: true,
+    pyqSolvedCount: 15,
+    mcqPracticeDone: true,
+    revisionCount: 2,
+    lastRevisedAt: new Date(Date.now() - 2 * 86400000).toISOString(),
+    confidenceScore: 4,
+    completionPercentage: 93.3,
+  },
+  'p-hist-anc-1': {
+    subtopicId: 'p-hist-anc-1',
+    ncertRead: true,
+    standardBookRead: true,
+    standardBookName: 'RS Sharma',
+    coachingAttended: false,
+    extraSources: '',
+    notesMade: true,
+    currentAffairsLinked: false,
+    pyqSolvedCount: 10,
+    mcqPracticeDone: true,
+    revisionCount: 0,
+    lastRevisedAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+    confidenceScore: 3,
+    completionPercentage: 70,
+  },
+  'p-geo-1': {
+    subtopicId: 'p-geo-1',
+    ncertRead: true,
+    standardBookRead: true,
+    standardBookName: 'GC Leong',
+    coachingAttended: false,
+    extraSources: '',
+    notesMade: true,
+    currentAffairsLinked: false,
+    pyqSolvedCount: 8,
+    mcqPracticeDone: true,
+    revisionCount: 0,
+    lastRevisedAt: new Date(Date.now() - 4 * 86400000).toISOString(),
+    confidenceScore: 3,
+    completionPercentage: 65,
+  },
+};
 
 const DEFAULT_INITIAL_PLAN: DailyPlan = {
   id: 'plan-default',
@@ -146,11 +219,112 @@ export default function TodayPage() {
   // Countdown calculations
   const daysToPrelims = getDaysUntil(UPSC_2027_DATES.PRELIMS);
 
+  // Phase 6: Revision & Backlog Progress State
+  const [progressMap, setProgressMap] = useState<Record<string, SubtopicUserProgress>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('upsc_syllabus_progress');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          // fallback
+        }
+      }
+    }
+    return DEFAULT_PROGRESS_MAP;
+  });
+
+  const [isRevisionSheetOpen, setIsRevisionSheetOpen] = useState<boolean>(false);
+  const [dismissedProposalId, setDismissedProposalId] = useState<string | null>(null);
+
+  const handleProgressMapUpdated = (updatedMap: Record<string, SubtopicUserProgress>) => {
+    setProgressMap(updatedMap);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('upsc_syllabus_progress', JSON.stringify(updatedMap));
+    }
+  };
+
+  const healthSummary = getRevisionHealthSummary({
+    progressMap,
+    examMode,
+    backlogThreshold: 3,
+  });
+
   // Save plan to localStorage whenever updated
   const updatePlan = (newPlan: DailyPlan) => {
     setPlan(newPlan);
     if (typeof window !== 'undefined') {
       localStorage.setItem('upsc_today_plan', JSON.stringify(newPlan));
+    }
+  };
+
+  // Phase 6: Human-in-the-Loop Recovery Proposal Acceptance
+  const handleAcceptRecoveryProposal = (proposal: RecoveryProposal) => {
+    const newTasks: PlannerTask[] = proposal.proposedChanges
+      .filter((c) => c.adjustedMinutes > 0)
+      .slice(0, 2)
+      .map((change, idx) => ({
+        id: `task-recov-${Date.now()}-${idx}`,
+        subjectId: 'revision-recovery',
+        subjectName: change.affectedSubject,
+        topicId: `recov-topic-${idx}`,
+        topicTitle: change.description.replace(/^(Slot\s+|Fast-track\s+|Schedule\s+)/, ''),
+        taskType: 'revision' as const,
+        durationMinutes: change.adjustedMinutes,
+        completedMinutes: 0,
+        status: 'pending' as const,
+        reason: `Calm catch-up (${proposal.strategy === 'redistribute_spread' ? 'Gentle Spread' : proposal.strategy === 'buffer_catchup' ? 'Weekend Buffer' : 'Core Priority'})`,
+        orderIndex: plan.tasks.length + idx + 1,
+      }));
+
+    const updatedTasks = [...plan.tasks, ...newTasks];
+    const updatedPlan: DailyPlan = {
+      ...plan,
+      tasks: updatedTasks,
+      totalPlannedMinutes: updatedTasks.reduce((acc, t) => acc + t.durationMinutes, 0),
+      updatedAt: new Date().toISOString(),
+    };
+
+    updatePlan(updatedPlan);
+    setDismissedProposalId(proposal.id);
+    setEncouragement({
+      title: '🤝 Adaptive Recovery Plan Activated',
+      body: `Your schedule has been rebalanced calmly with ${newTasks.length} queued revision task(s). Remember: consistency beats intensity every single time.`,
+      category: 'comeback',
+    });
+  };
+
+  const handleSelectTopicForTimer = (
+    subtopicId: string,
+    subtopicTitle: string,
+    subjectName: string
+  ) => {
+    const existing = plan.tasks.find(
+      (t) => t.topicTitle.includes(subtopicTitle) || t.id.includes(subtopicId)
+    );
+    if (existing) {
+      setActiveTaskId(existing.id);
+    } else {
+      const newTask: PlannerTask = {
+        id: `task-rev-${Date.now()}`,
+        subjectId: 'spaced-revision',
+        subjectName,
+        topicId: subtopicId,
+        topicTitle: `Revision: ${subtopicTitle}`,
+        taskType: 'revision',
+        durationMinutes: 45,
+        completedMinutes: 0,
+        status: 'pending',
+        reason: 'Directly selected from Spaced Revision Manager',
+        orderIndex: plan.tasks.length + 1,
+      };
+      const updated = [...plan.tasks, newTask];
+      updatePlan({
+        ...plan,
+        tasks: updated,
+        totalPlannedMinutes: updated.reduce((s, t) => s + t.durationMinutes, 0),
+      });
+      setActiveTaskId(newTask.id);
     }
   };
 
@@ -369,6 +543,20 @@ export default function TodayPage() {
           <div className="flex items-center gap-2">
             <button
               type="button"
+              onClick={() => setIsRevisionSheetOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors shadow-xs"
+              title="Open Spaced Revision Manager"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Revisions</span>
+              {healthSummary.overdueCount > 0 ? (
+                <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {healthSummary.overdueCount}
+                </span>
+              ) : null}
+            </button>
+            <button
+              type="button"
               onClick={() => setIsCheckinOpen(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface)] hover:bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] transition-colors shadow-xs"
             >
@@ -404,6 +592,16 @@ export default function TodayPage() {
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+
+      {/* Phase 6: Human-in-the-Loop Backlog Recovery Proposal Card */}
+      {healthSummary.recoveryProposal && healthSummary.recoveryProposal.id !== dismissedProposalId && (
+        <RecoveryProposalCard
+          proposal={healthSummary.recoveryProposal}
+          overdueItems={healthSummary.urgentItems.filter((i) => i.status === 'overdue')}
+          onAccept={handleAcceptRecoveryProposal}
+          onDismiss={(id) => setDismissedProposalId(id)}
+        />
       )}
 
       {/* 3. Proposal State Banner (Human-in-the-Loop Principle) */}
@@ -737,6 +935,17 @@ export default function TodayPage() {
         onClose={() => setIsWrapupOpen(false)}
         plan={plan}
         onWrapupCompleted={handleWrapupCompleted}
+      />
+
+      {/* Phase 6: Spaced Revision Manager Sheet */}
+      <RevisionManagerSheet
+        isOpen={isRevisionSheetOpen}
+        onClose={() => setIsRevisionSheetOpen(false)}
+        healthSummary={healthSummary}
+        progressMap={progressMap}
+        onProgressMapUpdated={handleProgressMapUpdated}
+        onAcceptRecoveryProposal={handleAcceptRecoveryProposal}
+        onSelectTopicForTimer={handleSelectTopicForTimer}
       />
     </div>
   );
