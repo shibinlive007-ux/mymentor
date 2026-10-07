@@ -2,19 +2,22 @@
  * Deterministic Daily Planner Engine for UPSC 2027 AI Mentor
  *
  * Implements strict, mathematically sound scheduling rules:
+ * - Reads weekly subject share before choosing tasks
+ * - Never schedules NEW study in a subject at or over the cap (default 35%)
+ * - Prioritizes subjects with 0 or low hours this week and large syllabus gaps
  * - Spaced repetition priority (due revisions at 1, 7, 21, 45 days)
- * - 35% weekly subject cap guardrail
  * - Anti-stuck warning (>5 days on same subject)
- * - Anti-burnout "Minimum Viable Day" mode on low energy or tight time
+ * - Anti-burnout "Minimum Viable Day" mode on low energy (mood <= 2) or tight time (< 3.5h)
  * - Guaranteed daily Current Affairs slot
  * - Mains answer writing / mock test integration
  */
 
 import { CheckinInput, DailyPlan, PlannerTask } from '@/types/planner';
-import { SubtopicUserProgress } from '@/types/syllabus';
+import { SubtopicUserProgress, SubjectNode } from '@/types/syllabus';
 import { determineDayCapacity, checkSubjectWeeklyCap, checkStuckOnSubject } from './rules';
 import { evaluateRevisionHealth } from './spaced-repetition';
 import { ALL_SYLLABUS_SUBJECTS } from '@/lib/syllabus/seed-loader';
+import { PLANNER_CONFIG } from '@/config/planner-config';
 
 export interface GeneratePlanOptions {
   checkin: CheckinInput;
@@ -23,6 +26,51 @@ export interface GeneratePlanOptions {
   recentSubjectHours?: Record<string, number>;
   consecutiveDaysOnSubject?: Record<string, number>;
   dateString?: string;
+}
+
+/**
+ * Normalizes subject names and aliases to find weekly logged study hours
+ */
+export function getSubjectWeeklyHours(
+  subject: SubjectNode,
+  recentSubjectHours: Record<string, number>
+): number {
+  if (recentSubjectHours[subject.id] !== undefined) {
+    return recentSubjectHours[subject.id];
+  }
+  if (recentSubjectHours[subject.subject] !== undefined) {
+    return recentSubjectHours[subject.subject];
+  }
+
+  const subjectLower = subject.subject.toLowerCase();
+  const idLower = subject.id.toLowerCase();
+
+  for (const [key, hours] of Object.entries(recentSubjectHours)) {
+    const keyLower = key.toLowerCase();
+    if (
+      keyLower === subjectLower ||
+      keyLower === idLower ||
+      subjectLower.includes(keyLower) ||
+      keyLower.includes(subjectLower)
+    ) {
+      return hours;
+    }
+
+    // Common UPSC alias matching
+    if (
+      (keyLower.includes('history') && subjectLower.includes('history')) ||
+      (keyLower.includes('polity') && subjectLower.includes('polity')) ||
+      (keyLower.includes('economy') && (subjectLower.includes('economy') || subjectLower.includes('economic'))) ||
+      (keyLower.includes('geography') && subjectLower.includes('geography')) ||
+      (keyLower.includes('ethics') && subjectLower.includes('ethics')) ||
+      (keyLower.includes('csat') && (subjectLower.includes('csat') || idLower.includes('csat'))) ||
+      (keyLower.includes('environment') && subjectLower.includes('environment'))
+    ) {
+      return hours;
+    }
+  }
+
+  return 0;
 }
 
 /**
@@ -39,7 +87,7 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
     dateString = new Date().toISOString().split('T')[0],
   } = options;
 
-  // 1. Capacity & Fatigue Evaluation
+  // 1. Capacity & Fatigue Evaluation (MVD if mood <= 2, available hours < 3.5, or disruptions)
   const hasDisruptions = checkin.disruptions.length > 0 && !checkin.disruptions.includes('free_day');
   const capacity = determineDayCapacity({
     energyMood: checkin.energyMood,
@@ -53,18 +101,21 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
   // 2. Identify Weekly Hours Total for Subject Cap Check
   const totalWeeklyHours = Object.values(recentSubjectHours).reduce((a, b) => a + b, 0);
 
-  // Helper to check if subject is capped
-  const isSubjectOverCap = (subjectName: string): boolean => {
-    if (totalWeeklyHours < 10) return false; // Grace period before enforcing cap
-    const subHours = recentSubjectHours[subjectName] || 0;
-    const check = checkSubjectWeeklyCap(subHours, totalWeeklyHours);
+  // Helper to check if subject is capped (strictly >= 35% weekly share)
+  const isSubjectOverCap = (subject: SubjectNode | string): boolean => {
+    if (totalWeeklyHours <= 0) return false;
+    const subHours = typeof subject === 'string'
+      ? (recentSubjectHours[subject] ?? 0)
+      : getSubjectWeeklyHours(subject, recentSubjectHours);
+
+    const check = checkSubjectWeeklyCap(subHours, totalWeeklyHours, PLANNER_CONFIG.SUBJECT_WEEKLY_CAP_PERCENT);
     return check.isSubjectCapped;
   };
 
   // Helper to check if user has been stuck on subject
   const isSubjectStuck = (subjectName: string): boolean => {
     const days = consecutiveDaysOnSubject[subjectName] || 0;
-    return checkStuckOnSubject(days);
+    return checkStuckOnSubject(days, PLANNER_CONFIG.MAX_CONSECUTIVE_DAYS_ON_SUBJECT);
   };
 
   // 3. Find Filtered Subjects matching current exam mode
@@ -74,7 +125,7 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
     return true;
   });
 
-  // 4. Collect Spaced Repetition Due Tasks
+  // 4. Collect Spaced Repetition Due Tasks (Revisions are allowed even if over-cap)
   interface CandidateRevision {
     subtopicId: string;
     subtopicTitle: string;
@@ -125,7 +176,7 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
 
   // STAPLE 1: Scheduled Mock Test / Assignment (if user indicated test today)
   if (checkin.hasTestToday) {
-    const testMinutes = isMVD ? 60 : 90;
+    const testMinutes = isMVD ? PLANNER_CONFIG.DURATIONS.MOCK_TEST_MVD : PLANNER_CONFIG.DURATIONS.MOCK_TEST_STANDARD;
     tasks.push({
       id: `task-${orderIndex}`,
       subjectId: 'mock-test',
@@ -142,10 +193,10 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
     allocatedMinutes += testMinutes;
   }
 
-  // STAPLE 2: High-Priority Due Revision (Always front-loaded for memory retention)
-  const topRevision = dueRevisions.find((r) => !isSubjectOverCap(r.subjectName)) || dueRevisions[0];
+  // STAPLE 2: High-Priority Due Revision (Front-loaded; revision allowed even if subject is over cap)
+  const topRevision = dueRevisions[0];
   if (topRevision) {
-    const revDuration = isMVD ? 45 : 60;
+    const revDuration = isMVD ? PLANNER_CONFIG.DURATIONS.REVISION_MVD : PLANNER_CONFIG.DURATIONS.REVISION_STANDARD;
     const revReason =
       topRevision.status === 'overdue'
         ? `⚠️ Spaced revision is ${topRevision.daysOverdue} days overdue (Cycle #${topRevision.revisionCount + 1})`
@@ -170,7 +221,7 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
   }
 
   // STAPLE 3: Daily Current Affairs (Mandatory UPSC Pillar)
-  const caDuration = isMVD ? 30 : 45;
+  const caDuration = isMVD ? PLANNER_CONFIG.DURATIONS.CURRENT_AFFAIRS_MVD : PLANNER_CONFIG.DURATIONS.CURRENT_AFFAIRS_STANDARD;
   tasks.push({
     id: `task-${orderIndex}`,
     subjectId: 'ca-daily',
@@ -188,8 +239,8 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
 
   // If Minimum Viable Day: Stop here (or add 1 light task if room remains)
   if (isMVD) {
-    // If under target by > 30 mins, add one light PYQ solve
-    if (targetMinutes - allocatedMinutes >= 40) {
+    // If under target by >= 30 mins, add one light PYQ solve
+    if (targetMinutes - allocatedMinutes >= 30) {
       tasks.push({
         id: `task-${orderIndex}`,
         subjectId: 'p-pol',
@@ -207,11 +258,47 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
     }
   } else {
     // 6. Deep Work / New Study Slot for Standard & Heavy Days
-    // Select eligible subjects that are not capped and not stuck
+    // Filter eligible subjects: NEVER schedule NEW study in a subject at or over the cap
     const eligibleSubjects = availableSubjects.filter(
-      (s) => !isSubjectOverCap(s.subject) && !isSubjectStuck(s.subject)
+      (s) => !isSubjectOverCap(s) && !isSubjectStuck(s.subject)
     );
-    const candidateSubject = eligibleSubjects.length > 0 ? eligibleSubjects[0] : availableSubjects[0];
+
+    // Score & Rank eligible subjects:
+    // (a) Prioritize subjects with 0 or lowest hours this week (neglected subjects)
+    // (b) Break ties with largest syllabus gap (highest uncompleted subtopics ratio)
+    const scoredSubjects = eligibleSubjects.map((s) => {
+      const hours = getSubjectWeeklyHours(s, recentSubjectHours);
+      let totalSubtopics = 0;
+      let uncompletedSubtopics = 0;
+
+      for (const t of s.topics) {
+        for (const st of t.subtopics) {
+          totalSubtopics++;
+          const p = progressMap[st.id];
+          if (!p || !p.standardBookRead) {
+            uncompletedSubtopics++;
+          }
+        }
+      }
+
+      const gapRatio = totalSubtopics > 0 ? uncompletedSubtopics / totalSubtopics : 0;
+      return {
+        subject: s,
+        hours,
+        uncompletedSubtopics,
+        gapRatio,
+      };
+    });
+
+    // Lowest weekly hours first (0-hour subjects get promoted to #1!)
+    scoredSubjects.sort((a, b) => {
+      if (Math.abs(a.hours - b.hours) > 0.1) {
+        return a.hours - b.hours; // ascending hours
+      }
+      return b.gapRatio - a.gapRatio; // descending syllabus gap
+    });
+
+    const candidateSubject = scoredSubjects.length > 0 ? scoredSubjects[0].subject : null;
 
     // Find next uncompleted subtopic in candidate subject
     let nextStudyItem: { topicTitle: string; topicId: string; subtopicTitle: string; subtopicId: string } | null = null;
@@ -234,8 +321,10 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
       }
     }
 
-    if (nextStudyItem && targetMinutes - allocatedMinutes >= 60) {
-      const studyDuration = Math.min(90, targetMinutes - allocatedMinutes);
+    if (candidateSubject && nextStudyItem && targetMinutes - allocatedMinutes >= 60) {
+      const studyDuration = Math.min(PLANNER_CONFIG.DURATIONS.NEW_STUDY_MAX, targetMinutes - allocatedMinutes);
+      const isNeglectedSubject = getSubjectWeeklyHours(candidateSubject, recentSubjectHours) === 0;
+
       tasks.push({
         id: `task-${orderIndex}`,
         subjectId: candidateSubject.id,
@@ -248,7 +337,9 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
         durationMinutes: studyDuration,
         completedMinutes: 0,
         status: 'pending',
-        reason: `High-yield syllabus progression; balancing study share within 35% weekly guideline`,
+        reason: isNeglectedSubject
+          ? `Priority rotation: ${candidateSubject.subject} has 0 hours this week (balancing syllabus coverage)`
+          : `High-yield syllabus progression; balancing study share within 35% weekly guideline`,
         orderIndex: orderIndex++,
       });
       allocatedMinutes += studyDuration;
@@ -328,7 +419,7 @@ export function generateDailyPlan(options: GeneratePlanOptions): DailyPlan {
   // Add guardrail warnings if applicable
   const overCappedSubjects = Object.keys(recentSubjectHours).filter((s) => isSubjectOverCap(s));
   if (overCappedSubjects.length > 0) {
-    mentorRationale += ` (Note: ${overCappedSubjects.join(', ')} exceeded 35% weekly hours; rotating focus to balance preparation).`;
+    mentorRationale += ` (Note: ${overCappedSubjects.join(', ')} reached/exceeded 35% weekly hours; rotating new study focus to neglected subjects).`;
   }
 
   return {
