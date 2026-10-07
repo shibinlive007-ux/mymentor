@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/supabase/auth-context';
 import {
   User,
@@ -86,6 +87,7 @@ function getInitialMemories(): ExtractedMentorFact[] {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { profile, updateProfile, signOut } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [showMentorMemory, setShowMentorMemory] = useState(false);
@@ -148,7 +150,7 @@ export default function SettingsPage() {
     try {
       purgeAllUserData();
       signOut();
-      window.location.href = '/onboarding';
+      router.push('/onboarding');
     } finally {
       setIsDeleting(false);
       setShowDeleteModal(false);
@@ -197,8 +199,10 @@ export default function SettingsPage() {
     }
   };
 
-  const trialDaysRemaining = getTrialDaysRemaining(
-    new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString()
+  const [trialDaysRemaining] = useState(() =>
+    getTrialDaysRemaining(
+      new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toISOString()
+    )
   );
 
   return (

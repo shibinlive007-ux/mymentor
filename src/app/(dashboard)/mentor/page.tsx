@@ -30,6 +30,14 @@ const INITIAL_GREETING: MentorMessage = {
   ],
 };
 
+function createUniqueId(prefix: string): string {
+  return `${prefix}-${Date.now()}`;
+}
+
+function getFormattedTimeString(): string {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 export default function MentorPage() {
   const { profile, examMode } = useAuth();
   const [messages, setMessages] = useState<MentorMessage[]>([INITIAL_GREETING]);
@@ -81,10 +89,10 @@ export default function MentorPage() {
     if (!query) return;
 
     const userMsg: MentorMessage = {
-      id: `m-usr-${Date.now()}`,
+      id: createUniqueId('m-usr'),
       sender: 'user',
       text: query,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: getFormattedTimeString(),
     };
 
     setMessages((prev) => [...prev, userMsg]);
@@ -115,7 +123,7 @@ export default function MentorPage() {
                   localStorage.setItem('upsc_today_plan', JSON.stringify(plan));
                 } else if (m.proposal.actionType === 'add_ethics_slot') {
                   const newTask: PlannerTask = {
-                    id: `task-eth-${Date.now()}`,
+                    id: createUniqueId('task-eth'),
                     subjectId: 'm-eth',
                     subjectName: 'Ethics (GS IV)',
                     topicId: 'case-studies',

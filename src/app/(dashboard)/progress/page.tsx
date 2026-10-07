@@ -13,10 +13,11 @@ import { WeeklyStrategicReviewCard } from '@/components/analytics/WeeklyStrategi
 import {
   computeSubjectBalance,
   computeStageRollups,
-  generate30DayActivityGrid,
   generateStrategicWeeklyReview,
   SubjectHourInput,
 } from '@/lib/analytics/weekly-review-engine';
+import { getAllSessions } from '@/lib/sessions/session-manager';
+import { calculateStreakAndConsistency } from '@/lib/sessions/streak-calculator';
 import { PyqTrackingSummary } from '@/types/analytics';
 import {
   RotateCcw,
@@ -119,7 +120,7 @@ const DEFAULT_SAMPLE_PROGRESS: Record<string, SubtopicUserProgress> = {
 };
 
 export default function ProgressPage() {
-  const { examMode } = useAuth();
+  const { examMode, profile } = useAuth();
   const [isRevisionSheetOpen, setIsRevisionSheetOpen] = useState(false);
 
   // User syllabus progress map
@@ -139,7 +140,6 @@ export default function ProgressPage() {
 
   const totalActualWeek = mockWeeklyHours.reduce((sum, d) => sum + d.actual, 0);
   const totalPlannedWeek = mockWeeklyHours.reduce((sum, d) => sum + d.planned, 0);
-  const weeklyConsistency = totalPlannedWeek > 0 ? Math.round((totalActualWeek / totalPlannedWeek) * 100) : 100;
 
   // Compute live revision health summary
   const healthSummary = getRevisionHealthSummary({
@@ -147,15 +147,21 @@ export default function ProgressPage() {
     examMode,
   });
 
+  // Real session analytics (eliminates streak and heatmap contradiction)
+  const [sessions] = useState(() => (typeof window !== 'undefined' ? getAllSessions() : []));
+  const streakAnalytics = calculateStreakAndConsistency(sessions, new Date(), 1);
+  const activityGrid = streakAnalytics.activityGrid;
+  const streakDays = streakAnalytics.currentStreakDays;
+  const consistencyPercent = streakAnalytics.consistencyPercent30d;
+
   // Phase 7 Analytics Engines
   const subjectBalances = computeSubjectBalance(mockSubjectHours, totalActualWeek);
-  const stageRollups = computeStageRollups(progressMap);
-  const activityGrid = generate30DayActivityGrid([], new Date());
+  const stageRollups = computeStageRollups(progressMap, profile?.optional_subject, sessions);
   const [weeklyReview, setWeeklyReview] = useState(() =>
     generateStrategicWeeklyReview({
       plannedHours: totalPlannedWeek,
       actualHours: totalActualWeek,
-      streakDays: 14,
+      streakDays: streakDays,
       subjectBalances,
       pyqSummary: mockPyqSummary,
     })
@@ -172,7 +178,7 @@ export default function ProgressPage() {
     const updated = generateStrategicWeeklyReview({
       plannedHours: totalPlannedWeek,
       actualHours: totalActualWeek,
-      streakDays: 14,
+      streakDays: streakDays,
       subjectBalances,
       pyqSummary: mockPyqSummary,
     });
@@ -192,16 +198,16 @@ export default function ProgressPage() {
               {totalActualWeek.toFixed(1)} / {totalPlannedWeek.toFixed(1)} hrs
             </div>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
-              Consistency rate is {weeklyConsistency}% • 14-day study streak active
+              Consistency rate is {consistencyPercent}% • {streakDays}-day study streak active
             </p>
           </div>
 
           <div className="flex flex-col items-end gap-1">
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-full border border-emerald-500/20 font-mono">
-              {weeklyConsistency}% on track
+              {consistencyPercent}% on track
             </span>
             <span className="text-[10px] text-[var(--foreground-muted)]">
-              Avg 6.9 hrs / day
+              Avg {(totalActualWeek / 7).toFixed(1)} hrs / day
             </span>
           </div>
         </div>
@@ -270,8 +276,8 @@ export default function ProgressPage() {
       {/* 5. 30-Day Consistency Heatmap & PYQ Tracker */}
       <ConsistencyHeatmap
         activityGrid={activityGrid}
-        streakDays={14}
-        consistencyPercent={weeklyConsistency}
+        streakDays={streakDays}
+        consistencyPercent={consistencyPercent}
         pyqSummary={mockPyqSummary}
       />
 
