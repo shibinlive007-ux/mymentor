@@ -1,88 +1,142 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
+import { useAuth } from '@/lib/supabase/auth-context';
 import {
   Sparkles,
   Send,
   CheckCircle,
   XCircle,
-  ShieldCheck
+  ShieldCheck,
+  RotateCcw,
+  BookOpen
 } from 'lucide-react';
+import {
+  generateGroundedMentorReply,
+  MENTOR_QUICK_PROMPTS,
+} from '@/lib/mentor/mentor-engine';
+import { MentorMessage, MentorUserContext } from '@/types/mentor';
+import { getRevisionHealthSummary } from '@/lib/revision/revision-engine';
+import { DailyPlan, PlannerTask } from '@/types/planner';
 
-interface ChatMsg {
-  id: string;
-  sender: 'mentor' | 'user';
-  text: string;
-  timestamp: string;
-  proposal?: {
-    id: string;
-    title: string;
-    reason: string;
-    status: 'pending' | 'accepted' | 'rejected';
-  };
-}
-
-const initialMessages: ChatMsg[] = [
-  {
-    id: 'm-1',
-    sender: 'mentor',
-    text: "Namaste Aditya! I’ve reviewed your preparation state. You completed 90 mins of Modern History this morning, but you've skipped Physical Geography for two days. How are your energy levels right now?",
-    timestamp: '10:15 AM',
-  },
-  {
-    id: 'm-2',
-    sender: 'user',
-    text: "Feeling slightly fatigued due to work pressure. Can we lighten today's afternoon slot without hurting my revision schedule?",
-    timestamp: '10:16 AM',
-  },
-  {
-    id: 'm-3',
-    sender: 'mentor',
-    text: "Completely understood. UPSC 2027 is a marathon, not a sprint. I've drafted a lightweight recovery proposal that trims today's Geography task from 75 to 35 minutes (focusing only on core Climatology NCERT diagrams) and reschedules the deep PYQ practice to Saturday morning.",
-    timestamp: '10:16 AM',
-    proposal: {
-      id: 'prop-1',
-      title: 'Lighten Today’s Schedule (-40 mins)',
-      reason: 'Prevent fatigue overload while maintaining NCERT momentum',
-      status: 'pending',
-    },
-  },
-];
+const INITIAL_GREETING: MentorMessage = {
+  id: 'm-initial',
+  sender: 'mentor',
+  text: "Namaste! I am My Mentor, grounded in the official UPSC CSE 2027 syllabus and your personal preparation progress.\n\nWhether you need Mains answer frameworks, high-yield Prelims PYQ priorities, Ethics case study blueprints, or calm fatigue recovery—ask freely. What is on your mind today?",
+  timestamp: 'Just now',
+  citations: [
+    { label: 'UPSC CSE 2027 Grounded Knowledge Base', paper: 'Curriculum & Strategy' },
+  ],
+};
 
 export default function MentorPage() {
-  const [messages, setMessages] = useState<ChatMsg[]>(initialMessages);
+  const { profile, examMode } = useAuth();
+  const [messages, setMessages] = useState<MentorMessage[]>([INITIAL_GREETING]);
   const [inputValue, setInputValue] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const handleSendMessage = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
+  // Auto-scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    const userMsg: ChatMsg = {
-      id: `m-${Date.now()}`,
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isReplying]);
+
+  // Construct current user context
+  const getUserContext = (): MentorUserContext => {
+    let overdueCount = 2;
+    let retentionPercent = 85;
+
+    if (typeof window !== 'undefined') {
+      const savedProg = localStorage.getItem('upsc_syllabus_progress');
+      if (savedProg) {
+        try {
+          const parsed = JSON.parse(savedProg);
+          const health = getRevisionHealthSummary({ progressMap: parsed, examMode });
+          overdueCount = health.overdueCount;
+          retentionPercent = health.retentionFreshnessPercent;
+        } catch {
+          // fallback
+        }
+      }
+    }
+
+    return {
+      fullName: profile?.full_name || 'Aspirant',
+      examMode: examMode || 'combined',
+      streakDays: profile?.streak_count || 14,
+      overdueCount,
+      retentionPercent,
+      overIndexedSubject: 'Modern History',
+      neglectedSubject: 'Ethics (GS IV)',
+    };
+  };
+
+  const handleSendMessage = (textToSend?: string) => {
+    const query = (textToSend || inputValue).trim();
+    if (!query) return;
+
+    const userMsg: MentorMessage = {
+      id: `m-usr-${Date.now()}`,
       sender: 'user',
-      text: inputValue,
+      text: query,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
     setMessages((prev) => [...prev, userMsg]);
     setInputValue('');
+    setIsReplying(true);
 
     setTimeout(() => {
-      const mentorReply: ChatMsg = {
-        id: `m-${Date.now() + 1}`,
-        sender: 'mentor',
-        text: "I hear you. I'm taking this into account for your adaptive timetable. Remember: consistency over intensity. Would you like me to generate a focused 30-minute revision slot?",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
-      setMessages((prev) => [...prev, mentorReply]);
-    }, 600);
+      const context = getUserContext();
+      const reply = generateGroundedMentorReply(query, context);
+      setMessages((prev) => [...prev, reply]);
+      setIsReplying(false);
+    }, 400);
   };
 
   const handleProposalAction = (msgId: string, action: 'accepted' | 'rejected') => {
     setMessages((prev) =>
       prev.map((m) => {
         if (m.id === msgId && m.proposal) {
+          // If accepted, update today's plan in localStorage
+          if (action === 'accepted' && typeof window !== 'undefined') {
+            const savedPlan = localStorage.getItem('upsc_today_plan');
+            if (savedPlan) {
+              try {
+                const plan: DailyPlan = JSON.parse(savedPlan);
+                if (m.proposal.actionType === 'minimum_viable_day') {
+                  plan.isMinimumViableDay = true;
+                  plan.mentorRationale = 'Minimum Viable Day activated to recover cognitive bandwidth without guilt.';
+                  localStorage.setItem('upsc_today_plan', JSON.stringify(plan));
+                } else if (m.proposal.actionType === 'add_ethics_slot') {
+                  const newTask: PlannerTask = {
+                    id: `task-eth-${Date.now()}`,
+                    subjectId: 'm-eth',
+                    subjectName: 'Ethics (GS IV)',
+                    topicId: 'case-studies',
+                    topicTitle: 'GS IV Case Study 5-Step Practice',
+                    taskType: 'answer_writing',
+                    durationMinutes: 45,
+                    completedMinutes: 0,
+                    status: 'pending',
+                    reason: 'Scheduled via My Mentor Case Study Blueprint recommendation',
+                    orderIndex: plan.tasks.length + 1,
+                  };
+                  plan.tasks.push(newTask);
+                  plan.totalPlannedMinutes += 45;
+                  localStorage.setItem('upsc_today_plan', JSON.stringify(plan));
+                }
+              } catch {
+                // fallback
+              }
+            }
+          }
+
           return {
             ...m,
             proposal: { ...m.proposal, status: action },
@@ -93,23 +147,64 @@ export default function MentorPage() {
     );
   };
 
+  const handleClearChat = () => {
+    setMessages([INITIAL_GREETING]);
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-135px)] pb-4">
+    <div className="flex flex-col h-[calc(100vh-140px)] pb-3">
       {/* Grounded Mentor Context Header */}
-      <div className="rounded-xl p-3 bg-[var(--surface-raised)] border border-[var(--border)] mb-3 text-xs flex items-center justify-between">
+      <div className="rounded-2xl p-3.5 bg-gradient-to-r from-[var(--surface-raised)] to-[var(--surface)] border border-[var(--border)] mb-2.5 text-xs flex items-center justify-between shadow-xs">
         <div className="flex items-center gap-2.5">
-          <Image src="/logo.png" alt="My Mentor" width={28} height={28} className="w-7 h-7 object-contain rounded-md" />
+          <Image
+            src="/logo.png"
+            alt="My Mentor"
+            width={28}
+            height={28}
+            className="w-7 h-7 object-contain rounded-md"
+          />
           <div>
-            <span className="font-bold text-[var(--foreground)] text-sm">My Mentor</span>
-            <span className="text-[var(--foreground-muted)] block text-[10px]">
-              Grounded in your 2027 plan • Human-in-the-loop approval
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-[var(--foreground)] text-sm">My Mentor</span>
+              <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                100% Free • Zero-API
+              </span>
+            </div>
+            <span className="text-[var(--foreground-muted)] block text-[10px] mt-0.5">
+              Grounded in official 2027 syllabus &amp; your live study rhythm
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-1 text-[11px] text-[var(--primary)] font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Active</span>
+
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1 text-[11px] text-[var(--primary)] font-medium bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Syllabus Guardrails Active</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearChat}
+            className="p-1 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+            title="Reset conversation"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         </div>
+      </div>
+
+      {/* Quick Topic Chips */}
+      <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {MENTOR_QUICK_PROMPTS.map((qp) => (
+          <button
+            key={qp.id}
+            type="button"
+            onClick={() => handleSendMessage(qp.query)}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[var(--surface)] hover:bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)] shrink-0 transition-all hover:border-[var(--primary)]/40 active:scale-98 shadow-xs"
+          >
+            <span>{qp.icon}</span>
+            <span>{qp.label}</span>
+          </button>
+        ))}
       </div>
 
       {/* Messages Scroll Area */}
@@ -120,22 +215,41 @@ export default function MentorPage() {
             className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
           >
             <div
-              className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-xs leading-relaxed shadow-xs ${
+              className={`max-w-[88%] sm:max-w-[80%] rounded-2xl px-4 py-3 text-xs leading-relaxed shadow-xs ${
                 msg.sender === 'user'
                   ? 'bg-[var(--primary)] text-white rounded-br-xs'
                   : 'bg-[var(--surface)] border border-[var(--border)] text-[var(--foreground)] rounded-bl-xs'
               }`}
             >
-              {msg.text}
+              <div className="whitespace-pre-line">{msg.text}</div>
+
+              {/* Citations / Source Badges */}
+              {msg.citations && msg.citations.length > 0 && (
+                <div className="mt-2.5 pt-2 border-t border-[var(--border)]/60 flex items-center gap-1.5 flex-wrap">
+                  {msg.citations.map((cite, i) => (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 text-[10px] font-medium text-[var(--primary)] bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20"
+                    >
+                      <BookOpen className="w-2.5 h-2.5" />
+                      <span>{cite.label}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Proposal Card if attached */}
               {msg.proposal && (
                 <div className="mt-3 p-3 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] space-y-2">
                   <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--primary)] uppercase tracking-wider">
-                    <Sparkles className="w-3.5 h-3.5" /> AI Plan Proposal
+                    <Sparkles className="w-3.5 h-3.5" /> Adaptive Plan Proposal
                   </div>
-                  <h4 className="font-semibold text-xs text-[var(--foreground)]">{msg.proposal.title}</h4>
-                  <p className="text-[11px] text-[var(--foreground-muted)]">{msg.proposal.reason}</p>
+                  <h4 className="font-semibold text-xs text-[var(--foreground)]">
+                    {msg.proposal.title}
+                  </h4>
+                  <p className="text-[11px] text-[var(--foreground-muted)]">
+                    {msg.proposal.reason}
+                  </p>
 
                   <div className="pt-1 flex items-center gap-2">
                     {msg.proposal.status === 'pending' ? (
@@ -143,16 +257,16 @@ export default function MentorPage() {
                         <button
                           type="button"
                           onClick={() => handleProposalAction(msg.id, 'accepted')}
-                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[var(--primary)] text-white font-semibold text-[11px] hover:bg-[var(--primary-hover)] transition-colors"
+                          className="flex items-center gap-1 px-3 py-1 rounded-lg bg-[var(--primary)] text-white font-semibold text-[11px] hover:bg-[var(--primary-hover)] transition-colors shadow-xs active:scale-98"
                         >
                           <CheckCircle className="w-3.5 h-3.5" /> Accept Proposal
                         </button>
                         <button
                           type="button"
                           onClick={() => handleProposalAction(msg.id, 'rejected')}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-red-600 text-[11px] transition-colors"
+                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-[var(--border)] text-[var(--foreground-muted)] hover:text-rose-600 text-[11px] transition-colors"
                         >
-                          <XCircle className="w-3.5 h-3.5" /> Reject
+                          <XCircle className="w-3.5 h-3.5" /> Dismiss
                         </button>
                       </>
                     ) : (
@@ -163,7 +277,9 @@ export default function MentorPage() {
                             : 'bg-rose-500/10 text-rose-700 dark:text-rose-400'
                         }`}
                       >
-                        {msg.proposal.status === 'accepted' ? '✓ Changes Applied' : '✗ Proposal Rejected'}
+                        {msg.proposal.status === 'accepted'
+                          ? '✓ Changes Applied to Schedule'
+                          : '✗ Proposal Dismissed'}
                       </span>
                     )}
                   </div>
@@ -175,20 +291,29 @@ export default function MentorPage() {
             </span>
           </div>
         ))}
+
+        {isReplying && (
+          <div className="flex items-center gap-1.5 text-xs text-[var(--foreground-muted)] px-3 py-1">
+            <span className="w-2 h-2 rounded-full bg-[var(--primary)] animate-pulse" />
+            <span>My Mentor is structuring guidance...</span>
+          </div>
+        )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Box */}
-      <form onSubmit={handleSendMessage} className="mt-2 flex items-center gap-2">
+      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="mt-2 flex items-center gap-2">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Ask for advice, re-plan your day, or discuss fatigue..."
-          className="flex-1 px-3.5 py-2.5 text-xs bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:border-[var(--primary)] transition-all shadow-xs"
+          placeholder="Ask for advice, re-plan your day, or explore PYQ trends..."
+          className="flex-1 px-3.5 py-2.5 text-xs bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:border-[var(--primary)] transition-all shadow-xs outline-none"
         />
         <button
           type="submit"
-          className="p-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs transition-colors flex-shrink-0"
+          disabled={!inputValue.trim()}
+          className="p-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs transition-colors flex-shrink-0 disabled:opacity-40"
           aria-label="Send message"
         >
           <Send className="w-4 h-4" />
