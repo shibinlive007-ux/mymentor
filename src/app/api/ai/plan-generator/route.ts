@@ -3,6 +3,7 @@ import { z } from 'zod';
 import OpenAI from 'openai';
 import { generateDailyPlan } from '@/lib/planner/daily-scheduler';
 import { DailyPlan, TaskType } from '@/types/planner';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/rate-limit';
 
 const CheckinSchema = z.object({
   energyMood: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]),
@@ -48,6 +49,17 @@ const AIPlanResponseSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') || '127.0.0.1';
+  const rateLimit = checkRateLimit(`plan_${ip}`, { limit: 20, windowMs: 60000 });
+  const headers = getRateLimitHeaders(rateLimit);
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { success: false, error: 'Too many plan requests. Please wait a moment.' },
+      { status: 429, headers }
+    );
+  }
+
   try {
     const rawBody = await req.json();
     const parsed = RequestBodySchema.safeParse(rawBody);
@@ -55,7 +67,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: 'Invalid input payload', details: parsed.error.format() },
-        { status: 400 }
+        { status: 400, headers }
       );
     }
 
