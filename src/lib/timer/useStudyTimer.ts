@@ -179,6 +179,8 @@ export function useStudyTimer({ activeTask, onSessionLogged }: UseStudyTimerProp
         subjectName: activeTask?.subjectName || 'Self Study',
         topicId: activeTask?.topicId || 'general-topic',
         topicTitle: activeTask?.topicTitle || 'General Preparation',
+        subtopicId: activeTask?.subtopicId,
+        subtopicTitle: activeTask?.subtopicTitle,
         startedAt: sessionStartTime || new Date(Date.now() - currentSeconds * 1000).toISOString(),
         endedAt: new Date().toISOString(),
         durationMinutes,

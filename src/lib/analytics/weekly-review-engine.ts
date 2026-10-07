@@ -21,6 +21,7 @@ import { PRELIMS_SUBJECTS_SEED } from '@/data/prelims-seed';
 import { MAINS_SUBJECTS_SEED } from '@/data/mains-seed';
 import { OPTIONALS_SUBJECTS_SEED } from '@/data/optionals-seed';
 import { getDefaultSubtopicProgress } from '@/lib/syllabus/rollup-engine';
+import { calculateStageRollups, calculateSubjectRollups } from '@/lib/completion';
 
 export const WEEKLY_SUBJECT_CAP_PERCENT = 35;
 
@@ -72,90 +73,81 @@ export function computeSubjectBalance(
 
 /**
  * Computes syllabus progress rolled up across stages (Prelims GS1, CSAT, Mains GS, Optional)
+ * Powered by unified @/lib/completion.ts
  */
 export function computeStageRollups(
-  progressMap: Record<string, SubtopicUserProgress>
+  progressMap: Record<string, SubtopicUserProgress>,
+  selectedOptional?: string | null,
+  sessions: StudySession[] = []
 ): StageProgressSummary[] {
-  // 1. Prelims GS1
-  const prelimsGs = PRELIMS_SUBJECTS_SEED.filter((s) => s.stage === 'prelims');
-  const prelimsSummary = calculateStageStats(prelimsGs, progressMap, 'prelims', 'Prelims GS-I', 'History, Polity, Geography, Economy, Env');
+  const allSeedSubjects = [
+    ...PRELIMS_SUBJECTS_SEED,
+    ...MAINS_SUBJECTS_SEED,
+    ...OPTIONALS_SUBJECTS_SEED,
+  ];
 
-  // 2. CSAT (Paper II)
-  const csatSubjects = PRELIMS_SUBJECTS_SEED.filter((s) => s.stage === 'csat');
-  // Fallback if csat seed is bundled or empty
-  const csatSummary: StageProgressSummary = csatSubjects.length > 0
-    ? calculateStageStats(csatSubjects, progressMap, 'csat', 'CSAT (Paper II)', 'Reasoning, Quant & Reading Comprehension')
-    : {
-        stage: 'csat',
-        title: 'CSAT (Paper II)',
-        subtitle: 'Reasoning, Quant & Comprehension',
-        completionPercentage: 35,
-        completedHours: 14,
-        totalEstimatedHours: 40,
-        topicsCompletedCount: 7,
-        topicsTotalCount: 20,
-      };
+  const rollups = calculateStageRollups(allSeedSubjects, progressMap, selectedOptional);
+  const subjectRollups = calculateSubjectRollups(allSeedSubjects, progressMap, sessions);
 
-  // 3. Mains GS (GS I to IV)
-  const mainsSummary = calculateStageStats(MAINS_SUBJECTS_SEED, progressMap, 'mains', 'Mains GS (I-IV)', 'Heritage, Governance, Economy, Ethics');
+  const getCompletedHours = (stage: 'prelims' | 'csat' | 'mains' | 'optional') => {
+    return Math.round(
+      subjectRollups
+        .filter((s) => s.stage === stage)
+        .reduce((sum, s) => sum + s.completedStudyHours, 0) * 10
+    ) / 10;
+  };
 
-  // 4. Optional
-  const optionalSummary = calculateStageStats(OPTIONALS_SUBJECTS_SEED, progressMap, 'optional', 'Optional Subject', 'Papers I & II Deep Conceptual Mastery');
+  const getTotalHours = (stage: 'prelims' | 'csat' | 'mains' | 'optional') => {
+    return subjectRollups
+      .filter((s) => s.stage === stage)
+      .reduce((sum, s) => sum + s.estimatedStudyHours, 0);
+  };
+
+  const prelimsSummary: StageProgressSummary = {
+    stage: 'prelims',
+    title: 'Prelims GS-I',
+    subtitle: 'History, Polity, Geography, Economy, Env',
+    completionPercentage: rollups.prelims.percentage,
+    completedHours: getCompletedHours('prelims'),
+    totalEstimatedHours: getTotalHours('prelims'),
+    topicsCompletedCount: rollups.prelims.coveredTopics,
+    topicsTotalCount: rollups.prelims.totalTopics,
+  };
+
+  const csatSummary: StageProgressSummary = {
+    stage: 'csat',
+    title: 'CSAT (Paper II)',
+    subtitle: 'Reasoning, Quant & Reading Comprehension',
+    completionPercentage: rollups.csat.percentage,
+    completedHours: getCompletedHours('csat'),
+    totalEstimatedHours: getTotalHours('csat'),
+    topicsCompletedCount: rollups.csat.coveredTopics,
+    topicsTotalCount: rollups.csat.totalTopics,
+  };
+
+  const mainsSummary: StageProgressSummary = {
+    stage: 'mains',
+    title: 'Mains GS (I-IV)',
+    subtitle: 'Heritage, Governance, Economy, Ethics',
+    completionPercentage: rollups.mains.percentage,
+    completedHours: getCompletedHours('mains'),
+    totalEstimatedHours: getTotalHours('mains'),
+    topicsCompletedCount: rollups.mains.coveredTopics,
+    topicsTotalCount: rollups.mains.totalTopics,
+  };
+
+  const optionalSummary: StageProgressSummary = {
+    stage: 'optional',
+    title: selectedOptional ? `Optional (${selectedOptional})` : 'Optional Subject',
+    subtitle: 'Papers I & II Deep Conceptual Mastery',
+    completionPercentage: rollups.optional.percentage,
+    completedHours: getCompletedHours('optional'),
+    totalEstimatedHours: getTotalHours('optional'),
+    topicsCompletedCount: rollups.optional.coveredTopics,
+    topicsTotalCount: rollups.optional.totalTopics,
+  };
 
   return [prelimsSummary, csatSummary, mainsSummary, optionalSummary];
-}
-
-function calculateStageStats(
-  subjects: typeof PRELIMS_SUBJECTS_SEED,
-  progressMap: Record<string, SubtopicUserProgress>,
-  stage: 'prelims' | 'csat' | 'mains' | 'optional',
-  title: string,
-  subtitle: string
-): StageProgressSummary {
-  let totalEstimatedHours = 0;
-  let weightedProgressSum = 0;
-  let totalWeight = 0;
-  let topicsCompletedCount = 0;
-  let topicsTotalCount = 0;
-
-  for (const subject of subjects) {
-    totalEstimatedHours += subject.estimated_study_hours || 60;
-    for (const topic of subject.topics) {
-      topicsTotalCount += 1;
-      let topicProgressTotal = 0;
-      let subWeightSum = 0;
-
-      for (const sub of topic.subtopics) {
-        const prog = progressMap[sub.id] || getDefaultSubtopicProgress(sub.id);
-        const weight = sub.weight || 1.0;
-        subWeightSum += weight;
-        topicProgressTotal += prog.completionPercentage * weight;
-      }
-
-      const topicAvg = subWeightSum > 0 ? topicProgressTotal / subWeightSum : 0;
-      if (topicAvg >= 80) {
-        topicsCompletedCount += 1;
-      }
-
-      const topWeight = 1.0;
-      totalWeight += topWeight;
-      weightedProgressSum += topicAvg * topWeight;
-    }
-  }
-
-  const completionPercentage = totalWeight > 0 ? Math.round(weightedProgressSum / totalWeight) : 0;
-  const completedHours = Math.round((completionPercentage / 100) * totalEstimatedHours);
-
-  return {
-    stage,
-    title,
-    subtitle,
-    completionPercentage,
-    completedHours,
-    totalEstimatedHours,
-    topicsCompletedCount,
-    topicsTotalCount,
-  };
 }
 
 /**

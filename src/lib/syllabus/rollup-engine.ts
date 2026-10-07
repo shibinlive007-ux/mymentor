@@ -1,5 +1,16 @@
+/**
+ * Syllabus Rollup Engine
+ * Delegates to single source of truth in @/lib/completion.ts
+ */
+
 import type { SubjectNode, SubtopicUserProgress, SubjectRollup } from '@/types/syllabus';
-import { calculateSubtopicCompletion, calculateWeightedRollup } from '@/lib/planner/completion-formula';
+import {
+  calculateSubtopicCompletion as calcSubtopic,
+  calculateSubjectRollups as calcSubjectRollups,
+  calculateWeightedRollup
+} from '@/lib/completion';
+
+export { calculateWeightedRollup } from '@/lib/completion';
 
 export function getDefaultSubtopicProgress(subtopicId: string): SubtopicUserProgress {
   return {
@@ -26,10 +37,11 @@ export function computeSubtopicProgress(
 ): SubtopicUserProgress {
   const merged: SubtopicUserProgress = { ...current, ...updates };
 
-  const pct = calculateSubtopicCompletion({
+  const pct = calcSubtopic({
     ncertRead: merged.ncertRead,
     standardBookRead: merged.standardBookRead,
-    notesMadeOrClassAttended: merged.notesMade || merged.coachingAttended,
+    notesMade: merged.notesMade,
+    coachingAttended: merged.coachingAttended,
     currentAffairsLinked: merged.currentAffairsLinked,
     pyqPracticeDone: merged.mcqPracticeDone || merged.pyqSolvedCount > 0,
     revisionCount: merged.revisionCount,
@@ -45,53 +57,5 @@ export function calculateSubjectRollups(
   subjects: SubjectNode[],
   progressMap: Record<string, SubtopicUserProgress>
 ): SubjectRollup[] {
-  return subjects.map((subject) => {
-    let totalSubtopics = 0;
-    const topicRollups = subject.topics.map((topic) => {
-      totalSubtopics += topic.subtopics.length;
-
-      const subtopicRollupList = topic.subtopics.map((sub) => {
-        const p = progressMap[sub.id] || getDefaultSubtopicProgress(sub.id);
-        return {
-          completionPercentage: p.completionPercentage,
-          weight: sub.weight,
-        };
-      });
-
-      const topicPercentage = calculateWeightedRollup(subtopicRollupList);
-      const completedCount = topic.subtopics.filter((sub) => {
-        const p = progressMap[sub.id];
-        return p && p.completionPercentage >= 70;
-      }).length;
-
-      return {
-        topicId: topic.id,
-        title: topic.title,
-        subtopicsCount: topic.subtopics.length,
-        completedSubtopicsCount: completedCount,
-        completionPercentage: topicPercentage,
-      };
-    });
-
-    const subjectWeightedList = subject.topics.map((topic, i) => ({
-      completionPercentage: topicRollups[i].completionPercentage,
-      weight: 1.0,
-    }));
-
-    const subjectPercentage = calculateWeightedRollup(subjectWeightedList);
-    const completedHours = Math.round(((subjectPercentage / 100) * subject.estimated_study_hours) * 10) / 10;
-
-    return {
-      subjectId: subject.id,
-      name: subject.subject,
-      paper: subject.paper,
-      stage: subject.stage,
-      totalTopics: subject.topics.length,
-      totalSubtopics,
-      completionPercentage: subjectPercentage,
-      estimatedStudyHours: subject.estimated_study_hours,
-      completedStudyHours: completedHours,
-      topics: topicRollups,
-    };
-  });
+  return calcSubjectRollups(subjects, progressMap);
 }

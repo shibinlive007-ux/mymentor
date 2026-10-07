@@ -1,7 +1,19 @@
 /**
  * Unified Planning & Guardrail Configuration for My Mentor (UPSC 2027)
- * Centralizes all thresholds, caps, intervals, and weights in one single config file.
+ * Centralizes all thresholds, caps, intervals, and completion weights in one single config file.
  */
+
+export const COMPLETION_WEIGHTS = {
+  ncert: 15,
+  standardBook: 25,
+  notesOrClass: 10,
+  currentAffairs: 10,
+  pyqPractice: 20,
+  revisions: 20,
+  maxRevisionCount: 3,
+} as const;
+
+export type CompletionWeightsConfig = typeof COMPLETION_WEIGHTS;
 
 export const PLANNER_CONFIG = {
   // Maximum share of weekly study hours any single subject may occupy

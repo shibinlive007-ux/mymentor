@@ -15,6 +15,8 @@ export interface StudySession {
   subjectName: string;
   topicId: string;
   topicTitle: string;
+  subtopicId?: string;
+  subtopicTitle?: string;
   startedAt: string;
   endedAt: string;
   durationMinutes: number;

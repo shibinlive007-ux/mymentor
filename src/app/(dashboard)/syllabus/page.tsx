@@ -10,6 +10,7 @@ import {
 } from '@/lib/syllabus/seed-loader';
 import { SubtopicUserProgress, SubtopicNode } from '@/types/syllabus';
 import { SubtopicDetailSheet } from '@/components/syllabus/SubtopicDetailSheet';
+import { calculateStageRollups } from '@/lib/completion';
 import {
   Search,
   Zap,
@@ -86,7 +87,7 @@ function getInitialProgressMap(): Record<string, SubtopicUserProgress> {
 }
 
 export default function SyllabusPage() {
-  const { examMode } = useAuth();
+  const { examMode, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [activeSubtopic, setActiveSubtopic] = useState<SubtopicNode | null>(null);
@@ -102,18 +103,17 @@ export default function SyllabusPage() {
     return true; // combined shows all
   });
 
-  // Calculate live rollups
+  // Calculate live rollups from single source of truth
   const subjectRollups = calculateSubjectRollups(currentStageSubjects, progressMap);
 
-  // Overall stage completion percentage
+  // Stage-aware completion percentage matching Progress tab exactly
+  const stageStats = calculateStageRollups(ALL_SYLLABUS_SUBJECTS, progressMap, profile?.optional_subject);
   const overallPercentage =
-    subjectRollups.length > 0
-      ? Math.round(
-          (subjectRollups.reduce((acc, s) => acc + s.completionPercentage, 0) /
-            subjectRollups.length) *
-            10
-        ) / 10
-      : 0;
+    examMode === 'prelims'
+      ? stageStats.prelims.percentage
+      : examMode === 'mains'
+      ? stageStats.mains.percentage
+      : stageStats.overall.percentage;
 
   // Search filtering
   const filteredRollups = subjectRollups.filter((s) =>
