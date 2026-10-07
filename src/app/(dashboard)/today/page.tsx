@@ -181,6 +181,27 @@ const DEFAULT_INITIAL_PLAN: DailyPlan = {
   updatedAt: new Date().toISOString(),
 };
 
+export const EMPTY_INITIAL_PLAN: DailyPlan = {
+  id: 'plan-empty',
+  date: new Date().toISOString().split('T')[0],
+  checkin: {
+    energyMood: 3,
+    availableHours: 0,
+    disruptions: [],
+    notes: '',
+  },
+  tasks: [],
+  status: 'proposed',
+  isMinimumViableDay: false,
+  targetHours: 0,
+  totalPlannedMinutes: 0,
+  totalCompletedMinutes: 0,
+  mentorRationale:
+    'No study plan scheduled for today yet. Run your morning check-in to generate a tailored, realistic plan.',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+
 export default function TodayPage() {
   const { profile, examMode } = useAuth();
 
@@ -195,8 +216,12 @@ export default function TodayPage() {
           // fallback
         }
       }
+      const isDemo = localStorage.getItem('upsc_demo_mode') === 'true';
+      if (isDemo) {
+        return DEFAULT_INITIAL_PLAN;
+      }
     }
-    return DEFAULT_INITIAL_PLAN;
+    return EMPTY_INITIAL_PLAN;
   });
 
   // Sessions list
@@ -214,7 +239,7 @@ export default function TodayPage() {
   const [encouragement, setEncouragement] = useState<EncouragementMessage | null>(null);
 
   // Active task state
-  const [activeTaskId, setActiveTaskId] = useState<string>('task-2');
+  const [activeTaskId, setActiveTaskId] = useState<string>('');
 
   // Countdown calculations
   const daysToPrelims = getDaysUntil(UPSC_2027_DATES.PRELIMS);
@@ -230,8 +255,12 @@ export default function TodayPage() {
           // fallback
         }
       }
+      const isDemo = localStorage.getItem('upsc_demo_mode') === 'true';
+      if (isDemo) {
+        return DEFAULT_PROGRESS_MAP;
+      }
     }
-    return DEFAULT_PROGRESS_MAP;
+    return {};
   });
 
   const [isRevisionSheetOpen, setIsRevisionSheetOpen] = useState<boolean>(false);
@@ -644,11 +673,45 @@ export default function TodayPage() {
         />
       )}
 
-      {/* 3. Proposal State Banner (Human-in-the-Loop Principle) */}
-      {plan.status === 'proposed' && (
-        <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-blue-500/15 border border-emerald-500/30 shadow-xs space-y-3 animate-slideUp">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-2.5">
+      {plan.tasks.length === 0 ? (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8 text-center space-y-4 shadow-xs animate-slideUp">
+          <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center mx-auto">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-[var(--foreground)]">
+              Ready to start today&apos;s preparation?
+            </h3>
+            <p className="text-xs text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed">
+              No study plan scheduled for today yet. Run your morning check-in to generate a tailored, realistic plan based on your available hours and energy.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsCheckinOpen(true)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-xs font-bold shadow-md transition-all active:scale-98"
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Run Morning Check-in</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleAddCustomTask}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)] hover:bg-[var(--surface)] text-[var(--foreground)] text-xs font-semibold transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Custom Task</span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* 3. Proposal State Banner (Human-in-the-Loop Principle) */}
+          {plan.status === 'proposed' && (
+            <div className="rounded-2xl p-4 bg-gradient-to-r from-emerald-500/15 via-teal-500/10 to-blue-500/15 border border-emerald-500/30 shadow-xs space-y-3 animate-slideUp">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-2.5">
               <div className="p-2 rounded-xl bg-emerald-600 text-white shrink-0 mt-0.5">
                 <Sparkles className="w-4 h-4" />
               </div>
@@ -882,6 +945,8 @@ export default function TodayPage() {
           })}
         </div>
       </div>
+    </>
+  )}
 
       {/* 7. Study Session Log (Progressive Disclosure) */}
       <div className="pt-1">

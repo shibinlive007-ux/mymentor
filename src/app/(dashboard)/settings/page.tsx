@@ -88,7 +88,7 @@ function getInitialMemories(): ExtractedMentorFact[] {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { profile, updateProfile, signOut } = useAuth();
+  const { profile, updateProfile, signOut, isDemoMode, toggleDemoMode } = useAuth();
   const [isSaved, setIsSaved] = useState(false);
   const [showMentorMemory, setShowMentorMemory] = useState(false);
 
@@ -105,8 +105,8 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Form states
-  const [fullName, setFullName] = useState(profile?.full_name || 'Aditya Sharma');
-  const [optionalSubject, setOptionalSubject] = useState(profile?.optional_subject || 'PSIR (Political Science)');
+  const [fullName, setFullName] = useState(profile?.full_name || 'Aspirant');
+  const [optionalSubject, setOptionalSubject] = useState(profile?.optional_subject || '');
   const [minHours, setMinHours] = useState(profile?.daily_target_hours_min || 6.0);
   const [maxHours, setMaxHours] = useState(profile?.daily_target_hours_max || 8.0);
   const [attemptNumber, setAttemptNumber] = useState(profile?.attempt_number || 1);
@@ -131,6 +131,19 @@ export default function SettingsPage() {
     const updated = memories.filter((m) => m.fact_key !== key);
     setMemories(updated);
     localStorage.setItem('upsc_mentor_memories', JSON.stringify(updated));
+  };
+
+  // Demo Mode Switch
+  const handleToggleDemoMode = () => {
+    if (isDemoMode) {
+      toggleDemoMode(false);
+      setFullName('Aspirant');
+    } else {
+      toggleDemoMode(true);
+      setFullName('Aditya Sharma');
+    }
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
   };
 
   // Export User Preparation Archive
@@ -423,6 +436,48 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Demo / Sample Mode Toggle */}
+      <div className="rounded-2xl p-4 bg-[var(--surface)] border border-[var(--border)] shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-bold text-[var(--foreground)]">Explore with Demo Data</h3>
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    isDemoMode
+                      ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                      : 'bg-[var(--surface-raised)] text-[var(--foreground-muted)]'
+                  }`}
+                >
+                  {isDemoMode ? 'Enabled' : 'Disabled'}
+                </span>
+              </div>
+              <p className="text-[11px] text-[var(--foreground-muted)] mt-0.5">
+                {isDemoMode
+                  ? 'Sample 14-day streak and mock study progress active for review'
+                  : 'Real user clean slate: 0 streak, empty plan prompt, no fake numbers'}
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleToggleDemoMode}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
+              isDemoMode
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-800 dark:text-amber-300 hover:bg-amber-500/25'
+                : 'bg-[var(--surface-raised)] border-[var(--border)] text-[var(--foreground)] hover:bg-[var(--surface-hover)]'
+            }`}
+          >
+            {isDemoMode ? 'Turn Off Demo Mode' : 'Enable Demo Mode'}
+          </button>
+        </div>
       </div>
 
       {/* Data Privacy & Portability (DPDP Act 2023) */}

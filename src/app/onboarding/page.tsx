@@ -19,7 +19,7 @@ const DEFAULT_ONBOARDING_DATA: CompleteOnboardingData = {
     fullName: '',
     targetYear: 2027,
     attemptNumber: 1,
-    optionalSubject: 'PSIR (Political Science)',
+    optionalSubject: '',
   },
   status: {
     employmentStatus: 'full_time',
@@ -143,6 +143,7 @@ export default function OnboardingPage() {
       optional_subject: data.basics.optionalSubject,
       daily_target_hours_min: data.goals.dailyTargetHoursMin,
       daily_target_hours_max: data.goals.dailyTargetHoursMax,
+      streak_count: 0,
       is_onboarded: true,
     });
 

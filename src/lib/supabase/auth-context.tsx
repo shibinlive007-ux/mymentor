@@ -28,10 +28,26 @@ interface AuthContextType {
   signInWithEmail: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => void;
+  isDemoMode: boolean;
+  toggleDemoMode: (enabled?: boolean) => void;
 }
 
-const defaultDevProfile: UserProfile = {
-  id: 'usr_dev_aspirant_2027',
+export const DEFAULT_NEW_USER_PROFILE: UserProfile = {
+  id: 'usr_new_aspirant',
+  email: '',
+  full_name: 'Aspirant',
+  target_year: 2027,
+  attempt_number: 1,
+  exam_mode: 'combined',
+  optional_subject: null,
+  daily_target_hours_min: 6.0,
+  daily_target_hours_max: 8.0,
+  streak_count: 0,
+  is_onboarded: false,
+};
+
+export const DEMO_SAMPLE_PROFILE: UserProfile = {
+  id: 'usr_demo_aspirant_2027',
   email: 'aspirant2027@upsc.test',
   full_name: 'Aditya Sharma',
   target_year: 2027,
@@ -46,16 +62,20 @@ const defaultDevProfile: UserProfile = {
 
 function getInitialProfile(): UserProfile {
   if (typeof window !== 'undefined') {
-    const saved = localStorage.getItem('upsc_dev_profile');
+    const isDemo = localStorage.getItem('upsc_demo_mode') === 'true';
+    if (isDemo) {
+      return DEMO_SAMPLE_PROFILE;
+    }
+    const saved = localStorage.getItem('upsc_user_profile') || localStorage.getItem('upsc_dev_profile');
     if (saved) {
       try {
         return JSON.parse(saved);
       } catch {
-        return defaultDevProfile;
+        return DEFAULT_NEW_USER_PROFILE;
       }
     }
   }
-  return defaultDevProfile;
+  return DEFAULT_NEW_USER_PROFILE;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -71,6 +91,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return initial.exam_mode || 'combined';
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('upsc_demo_mode') === 'true';
+    }
+    return false;
+  });
+
+  const toggleDemoMode = (enable?: boolean) => {
+    const nextVal = enable !== undefined ? enable : !isDemoMode;
+    setIsDemoMode(nextVal);
+    if (typeof window !== 'undefined') {
+      if (nextVal) {
+        localStorage.setItem('upsc_demo_mode', 'true');
+        setProfile(DEMO_SAMPLE_PROFILE);
+        localStorage.setItem('upsc_user_profile', JSON.stringify(DEMO_SAMPLE_PROFILE));
+      } else {
+        localStorage.removeItem('upsc_demo_mode');
+        setProfile(DEFAULT_NEW_USER_PROFILE);
+        localStorage.setItem('upsc_user_profile', JSON.stringify(DEFAULT_NEW_USER_PROFILE));
+      }
+    }
+  };
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -127,6 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (profile) {
       const updated = { ...profile, exam_mode: mode };
       setProfile(updated);
+      localStorage.setItem('upsc_user_profile', JSON.stringify(updated));
       localStorage.setItem('upsc_dev_profile', JSON.stringify(updated));
     }
   };
@@ -135,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (profile) {
       const updated = { ...profile, ...updates };
       setProfile(updated);
+      localStorage.setItem('upsc_user_profile', JSON.stringify(updated));
       localStorage.setItem('upsc_dev_profile', JSON.stringify(updated));
     }
   };
@@ -142,9 +186,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signInWithEmail = async (email: string): Promise<{ error: string | null }> => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
-      const newProf = { ...defaultDevProfile, email, full_name: email.split('@')[0] };
+      const newProf = {
+        ...DEFAULT_NEW_USER_PROFILE,
+        id: `usr_${Date.now()}`,
+        email,
+        full_name: email.split('@')[0],
+        is_onboarded: true,
+      };
       setUser({ id: newProf.id, email });
       setProfile(newProf);
+      localStorage.setItem('upsc_user_profile', JSON.stringify(newProf));
       localStorage.setItem('upsc_dev_profile', JSON.stringify(newProf));
       return { error: null };
     }
@@ -167,8 +218,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     }
     setUser(null);
-    setProfile(null);
+    setProfile(DEFAULT_NEW_USER_PROFILE);
+    localStorage.removeItem('upsc_user_profile');
     localStorage.removeItem('upsc_dev_profile');
+    localStorage.removeItem('upsc_demo_mode');
   };
 
   return (
@@ -182,6 +235,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signInWithEmail,
         signOut,
         updateProfile,
+        isDemoMode,
+        toggleDemoMode,
       }}
     >
       {children}

@@ -134,8 +134,12 @@ export default function ProgressPage() {
           // fallback
         }
       }
+      const isDemo = localStorage.getItem('upsc_demo_mode') === 'true';
+      if (isDemo) {
+        return DEFAULT_SAMPLE_PROGRESS;
+      }
     }
-    return DEFAULT_SAMPLE_PROGRESS;
+    return {};
   });
 
   const totalActualWeek = mockWeeklyHours.reduce((sum, d) => sum + d.actual, 0);

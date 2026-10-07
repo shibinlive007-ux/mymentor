@@ -10,7 +10,7 @@ import { MobileContainer } from '@/components/layout/MobileContainer';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, toggleDemoMode } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -33,6 +33,7 @@ export default function LoginPage() {
   };
 
   const handleQuickDemo = () => {
+    toggleDemoMode(true);
     router.push('/today');
   };
 
@@ -104,7 +105,7 @@ export default function LoginPage() {
           onClick={handleQuickDemo}
           className="w-full py-2.5 rounded-xl bg-[var(--surface-raised)] hover:bg-[var(--surface-hover)] border border-[var(--border)] text-xs font-semibold text-[var(--foreground)] transition-colors"
         >
-          Explore As Aditya Sharma (Dev Mode)
+          Explore with Demo Mode
         </button>
 
         <div className="mt-8 text-center text-xs text-[var(--foreground-muted)]">
