@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useAuth } from '@/lib/supabase/auth-context';
 import { ExamMode } from '@/types/database.types';
 import { Flame, Settings } from 'lucide-react';
+import { InstallPwaButton } from '@/components/pwa/InstallPwaButton';
 
 export function TopHeader() {
   const { examMode, setExamMode, profile } = useAuth();
@@ -75,6 +76,9 @@ export function TopHeader() {
               );
             })}
           </div>
+
+          {/* Install PWA Button (Shows when Chrome install prompt is ready) */}
+          <InstallPwaButton />
 
           {/* Settings Link */}
           <Link
