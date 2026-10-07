@@ -260,22 +260,62 @@ export default function TodayPage() {
 
   // Phase 6: Human-in-the-Loop Recovery Proposal Acceptance
   const handleAcceptRecoveryProposal = (proposal: RecoveryProposal) => {
-    const newTasks: PlannerTask[] = proposal.proposedChanges
-      .filter((c) => c.adjustedMinutes > 0)
-      .slice(0, 2)
-      .map((change, idx) => ({
-        id: `task-recov-${Date.now()}-${idx}`,
+    let newTasks: PlannerTask[] = [];
+
+    if (proposal.strategy === 'redistribute_spread') {
+      // Day 1 / today's plan only receives Day +1 items; Day +2 items are scheduled for subsequent days
+      const day1Changes = proposal.proposedChanges.filter((c) =>
+        c.description.startsWith('Day +1:')
+      );
+      const targetChanges = day1Changes.length > 0 ? day1Changes : proposal.proposedChanges.slice(0, 1);
+
+      newTasks = targetChanges.map((change, idx) => ({
+        id: `task-recov-spread-${Date.now()}-${idx}`,
         subjectId: 'revision-recovery',
         subjectName: change.affectedSubject,
-        topicId: `recov-topic-${idx}`,
-        topicTitle: change.description.replace(/^(Slot\s+|Fast-track\s+|Schedule\s+)/, ''),
+        topicId: `recov-topic-spread-${idx}`,
+        topicTitle: change.description.replace(/^Day \+\d+:\s*/, ''),
         taskType: 'revision' as const,
         durationMinutes: change.adjustedMinutes,
         completedMinutes: 0,
         status: 'pending' as const,
-        reason: `Calm catch-up (${proposal.strategy === 'redistribute_spread' ? 'Gentle Spread' : proposal.strategy === 'buffer_catchup' ? 'Weekend Buffer' : 'Core Priority'})`,
+        reason: 'Gentle Spread: Allocated to Day 1 revision slot',
         orderIndex: plan.tasks.length + idx + 1,
       }));
+    } else if (proposal.strategy === 'buffer_catchup') {
+      // Weekend Buffer: Protects today's schedule; queues light weekend catchup block
+      newTasks = [
+        {
+          id: `task-recov-wknd-${Date.now()}`,
+          subjectId: 'revision-recovery',
+          subjectName: 'Revision Buffer',
+          topicId: 'recov-topic-buffer',
+          topicTitle: `Weekend Consolidation Block (${proposal.backlogCount} Topics Reserved)`,
+          taskType: 'revision' as const,
+          durationMinutes: 15,
+          completedMinutes: 0,
+          status: 'pending' as const,
+          reason: 'Weekend Buffer: Overdue items deferred to Sunday consolidation block to protect today',
+          orderIndex: plan.tasks.length + 1,
+        },
+      ];
+    } else if (proposal.strategy === 'prune_low_weight') {
+      // Core Priority: Fast-track only high-yield pillars (adjustedMinutes > 0)
+      const highYieldChanges = proposal.proposedChanges.filter((c) => c.adjustedMinutes > 0);
+      newTasks = highYieldChanges.slice(0, 2).map((change, idx) => ({
+        id: `task-recov-core-${Date.now()}-${idx}`,
+        subjectId: 'revision-recovery',
+        subjectName: change.affectedSubject,
+        topicId: `recov-topic-core-${idx}`,
+        topicTitle: change.description.replace(/^Fast-track\s+/, ''),
+        taskType: 'revision' as const,
+        durationMinutes: change.adjustedMinutes,
+        completedMinutes: 0,
+        status: 'pending' as const,
+        reason: 'Core Priority: Fast-tracking high-yield syllabus pillar',
+        orderIndex: plan.tasks.length + idx + 1,
+      }));
+    }
 
     const updatedTasks = [...plan.tasks, ...newTasks];
     const updatedPlan: DailyPlan = {
@@ -289,7 +329,7 @@ export default function TodayPage() {
     setDismissedProposalId(proposal.id);
     setEncouragement({
       title: '🤝 Adaptive Recovery Plan Activated',
-      body: `Your schedule has been rebalanced calmly with ${newTasks.length} queued revision task(s). Remember: consistency beats intensity every single time.`,
+      body: `Your schedule has been rebalanced calmly (${proposal.strategy === 'redistribute_spread' ? 'Gentle Spread' : proposal.strategy === 'buffer_catchup' ? 'Weekend Buffer' : 'Core Priority'}). Consistency beats intensity.`,
       category: 'comeback',
     });
   };
