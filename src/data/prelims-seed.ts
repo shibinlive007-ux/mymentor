@@ -168,11 +168,69 @@ export const PRELIMS_SUBJECTS_SEED: SubjectNode[] = [
         ]
       },
       {
-        "id": "prelims.gs1.env.climate",
-        "title": "Pollution & International Conventions",
-        "subtopics": [
+        id: "prelims.gs1.env.climate",
+        title: "Pollution & International Conventions",
+        subtopics: [
           { id: "p-env-4", title: "Climate Change: Global Warming, Paris Agreement & COP Summits", weight: 1.2, estimated_hours: 5 },
           { id: "p-env-5", title: "Environmental Acts: EPA 1986, WPA 1972 & Forest Rights", weight: 1.1, estimated_hours: 4 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.gs1.art_culture",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "Indian Art & Culture",
+    node_type: "subject",
+    weight: 1.1,
+    estimated_study_hours: 60,
+    order_index: 6,
+    topics: [
+      {
+        id: "prelims.gs1.culture.visual",
+        title: "Visual Arts: Architecture, Sculpture & Paintings",
+        subtopics: [
+          { id: "p-cul-1", title: "Temple & Rock-Cut Architecture: Nagara, Dravida, Vesara, Cave Shrines", weight: 1.2, estimated_hours: 6 },
+          { id: "p-cul-2", title: "Sculpture Traditions: Gandhara, Mathura, Amravati, Chola Bronzes", weight: 1.1, estimated_hours: 5 },
+          { id: "p-cul-3", title: "Indian Paintings: Mural Traditions & Miniature Schools (Mughal, Rajasthani, Pahari)", weight: 1.0, estimated_hours: 5 }
+        ]
+      },
+      {
+        id: "prelims.gs1.culture.performing",
+        title: "Performing Arts, Literature & Philosophy",
+        subtopics: [
+          { id: "p-cul-4", title: "Classical & Folk Dances, Music Traditions (Hindustani & Carnatic)", weight: 1.1, estimated_hours: 5 },
+          { id: "p-cul-5", title: "Six Schools of Indian Philosophy, Bhakti-Sufi Literature & UNESCO Tangible/Intangible Sites", weight: 1.2, estimated_hours: 6 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "prelims.gs1.scitech",
+    paper: "GS Paper I",
+    stage: "prelims",
+    subject: "General Science & Technology",
+    node_type: "subject",
+    weight: 1.1,
+    estimated_study_hours: 65,
+    order_index: 7,
+    topics: [
+      {
+        id: "prelims.gs1.scitech.applied",
+        title: "Space, Defense & Nuclear Technology",
+        subtopics: [
+          { id: "p-sci-1", title: "Space Tech: ISRO Missions (Chandrayaan, Gaganyaan, Aditya-L1), Orbits & Launch Vehicles", weight: 1.2, estimated_hours: 6 },
+          { id: "p-sci-2", title: "Defense Tech: Ballistic/Cruise Missiles, Air Defense Systems, Submarines & Aircraft", weight: 1.1, estimated_hours: 5 },
+          { id: "p-sci-3", title: "Nuclear Energy: Three-Stage Indian Program, Fast Breeder Reactors & ITER", weight: 1.0, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "prelims.gs1.scitech.frontier",
+        title: "Biotechnology & Frontier Technologies",
+        subtopics: [
+          { id: "p-sci-4", title: "Biotechnology: CRISPR-Cas9, Gene Editing, Stem Cells, Vaccines & Human Genome", weight: 1.3, estimated_hours: 7 },
+          { id: "p-sci-5", title: "Emerging Tech: Artificial Intelligence, Quantum Computing, 5G/6G, Semiconductors & Web 3.0", weight: 1.2, estimated_hours: 6 }
         ]
       }
     ]
@@ -185,7 +243,7 @@ export const PRELIMS_SUBJECTS_SEED: SubjectNode[] = [
     node_type: "subject",
     weight: 0.9,
     estimated_study_hours: 45,
-    order_index: 6,
+    order_index: 8,
     topics: [
       {
         id: "prelims.csat.quant",

@@ -204,6 +204,26 @@ export interface StageRollupsResult {
 }
 
 /**
+ * Filters syllabus subjects to only include the user's selected optional subject
+ */
+export function filterUserSyllabusSubjects(
+  allSubjects: SubjectNode[],
+  selectedOptional?: string | null
+): SubjectNode[] {
+  return allSubjects.filter((s) => {
+    if (s.stage !== 'optional') return true;
+    if (!selectedOptional) return true; // if not set, include available
+    const optLower = selectedOptional.toLowerCase().trim();
+    const optCodeLower = (s.optional_code || '').toLowerCase().trim();
+    return (
+      s.subject.toLowerCase().includes(optLower) ||
+      s.id.toLowerCase().includes(optLower) ||
+      (optCodeLower !== '' && (optLower.includes(optCodeLower) || optCodeLower.includes(optLower)))
+    );
+  });
+}
+
+/**
  * Computes stage rollups for Prelims, CSAT, Mains, Optional, and Overall
  * Ensures only the user's selected optional subject is included in totals
  */
@@ -212,14 +232,7 @@ export function calculateStageRollups(
   progressMap: Record<string, SubtopicUserProgress> = {},
   selectedOptional?: string | null
 ): StageRollupsResult {
-  // Filter optional subjects to only the user's chosen optional
-  const filteredSubjects = allSubjects.filter((s) => {
-    if (s.stage !== 'optional') return true;
-    if (!selectedOptional) return true; // if not set, include available
-    const optLower = selectedOptional.toLowerCase();
-    return s.subject.toLowerCase().includes(optLower) || s.id.toLowerCase().includes(optLower);
-  });
-
+  const filteredSubjects = filterUserSyllabusSubjects(allSubjects, selectedOptional);
   const rollups = calculateSubjectRollups(filteredSubjects, progressMap);
 
   const getStageStats = (stage: 'prelims' | 'csat' | 'mains' | 'optional') => {

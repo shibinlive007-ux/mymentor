@@ -2,6 +2,34 @@ import type { SubjectNode } from '@/types/syllabus';
 
 export const MAINS_SUBJECTS_SEED: SubjectNode[] = [
   {
+    id: "mains.essay",
+    paper: "Essay (Paper I)",
+    stage: "mains",
+    subject: "Essay Paper (250 Marks)",
+    node_type: "subject",
+    weight: 1.2,
+    estimated_study_hours: 60,
+    order_index: 0,
+    topics: [
+      {
+        id: "mains.essay.philosophical",
+        title: "Section A: Philosophical, Ethical & Abstract Themes",
+        subtopics: [
+          { id: "m-ess-1", title: "Philosophical & Epistemological Prompts: Critical Thinking & Perspective Structuring", weight: 1.2, estimated_hours: 6 },
+          { id: "m-ess-2", title: "Ethical Dimensions of Life, Integrity, Compassion & Moral Dilemmas", weight: 1.1, estimated_hours: 5 }
+        ]
+      },
+      {
+        id: "mains.essay.socio_economic",
+        title: "Section B: Socio-Economic, Technology & Governance Themes",
+        subtopics: [
+          { id: "m-ess-3", title: "Social Justice, Women Empowerment, Education & Public Health", weight: 1.1, estimated_hours: 5 },
+          { id: "m-ess-4", title: "Economic Resilience, Sustainable Development & Emerging Technology Disruption", weight: 1.2, estimated_hours: 6 }
+        ]
+      }
+    ]
+  },
+  {
     id: "mains.gs1",
     paper: "Mains GS I",
     stage: "mains",
@@ -130,12 +158,68 @@ export const MAINS_SUBJECTS_SEED: SubjectNode[] = [
         ]
       },
       {
-        "id": "mains.gs4.case_studies",
-        "title": "Probity in Governance & Case Studies",
-        "subtopics": [
+        id: "mains.gs4.case_studies",
+        title: "Probity in Governance & Case Studies",
+        subtopics: [
           { id: "m-gs4-5", title: "Public/Civil Service Values and Ethics in Public Administration", weight: 1.2, estimated_hours: 6 },
           { id: "m-gs4-6", title: "Ethical Concerns and Dilemmas in Government and Private Institutions", weight: 1.3, estimated_hours: 7 },
           { id: "m-gs4-7", title: "Case Studies on Administrative Dilemmas, Corruption & Public Grievances", weight: 1.4, estimated_hours: 10 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "mains.qualifying.language",
+    paper: "Qualifying Paper A",
+    stage: "mains",
+    subject: "Compulsory Indian Language (Qualifying)",
+    node_type: "subject",
+    weight: 0.8,
+    estimated_study_hours: 35,
+    order_index: 5,
+    topics: [
+      {
+        id: "mains.qual.lang.comprehension",
+        title: "Reading Comprehension & Precis Writing",
+        subtopics: [
+          { id: "m-qlang-1", title: "Comprehension of Given Passages in Chosen Indian Language", weight: 1.0, estimated_hours: 4 },
+          { id: "m-qlang-2", title: "Precis Writing & Condensation Skills", weight: 1.0, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "mains.qual.lang.expression",
+        title: "Essay, Usage & Translation",
+        subtopics: [
+          { id: "m-qlang-3", title: "Short Essay Writing & Advanced Idiomatic Vocabulary", weight: 1.0, estimated_hours: 4 },
+          { id: "m-qlang-4", title: "Translation: English to Chosen Indian Language and vice-versa", weight: 1.1, estimated_hours: 5 }
+        ]
+      }
+    ]
+  },
+  {
+    id: "mains.qualifying.english",
+    paper: "Qualifying Paper B",
+    stage: "mains",
+    subject: "English Language (Qualifying)",
+    node_type: "subject",
+    weight: 0.8,
+    estimated_study_hours: 35,
+    order_index: 6,
+    topics: [
+      {
+        id: "mains.qual.eng.comprehension",
+        title: "Reading Comprehension & Precis Writing",
+        subtopics: [
+          { id: "m-qeng-1", title: "Comprehension of Advanced English Prose Passages", weight: 1.0, estimated_hours: 4 },
+          { id: "m-qeng-2", title: "Precis Writing (Summarizing Passages into One-Third Length)", weight: 1.0, estimated_hours: 4 }
+        ]
+      },
+      {
+        id: "mains.qual.eng.grammar",
+        title: "Short Essay, Usage & Grammar",
+        subtopics: [
+          { id: "m-qeng-3", title: "Short Essay Formulation & Structural Clarity", weight: 1.0, estimated_hours: 4 },
+          { id: "m-qeng-4", title: "Applied Grammar: Active/Passive, Direct/Indirect, Idioms & Prepositions", weight: 1.1, estimated_hours: 5 }
         ]
       }
     ]
