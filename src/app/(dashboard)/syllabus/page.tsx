@@ -35,7 +35,7 @@ function getInitialProgressMap(): Record<string, SubtopicUserProgress> {
 }
 
 export default function SyllabusPage() {
-  const { examMode, profile } = useAuth();
+  const { examMode, setExamMode, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
   const [quickModalSubtopic, setQuickModalSubtopic] = useState<SubtopicNode | null>(null);
@@ -143,6 +143,34 @@ export default function SyllabusPage() {
             className="h-full bg-[var(--primary)] rounded-full transition-all duration-500 ease-out"
             style={{ width: `${overallPercentage}%` }}
           />
+        </div>
+
+        {/* Stage Toggle Pills */}
+        <div
+          role="tablist"
+          aria-label="Syllabus Stage Filter"
+          className="mt-3.5 flex items-center p-1 bg-[var(--surface)] border border-[var(--border)] rounded-xl text-xs font-medium gap-1"
+        >
+          {(['prelims', 'mains', 'combined'] as const).map((mode) => {
+            const isActive = examMode === mode;
+            const label = mode === 'prelims' ? 'Prelims & CSAT' : mode === 'mains' ? 'Mains & Optional' : 'Combined';
+            return (
+              <button
+                key={mode}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setExamMode(mode)}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-center font-semibold transition-all ${
+                  isActive
+                    ? 'bg-[var(--primary)] text-white shadow-xs'
+                    : 'text-[var(--foreground-muted)] hover:text-[var(--foreground)]'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -299,7 +327,11 @@ export default function SyllabusPage() {
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--foreground-muted)]">
-              {examMode === 'prelims' ? 'Prelims Subjects' : examMode === 'mains' ? 'Mains Subjects' : 'All Papers'}
+              {examMode === 'prelims'
+                ? 'Prelims Subjects & CSAT'
+                : examMode === 'mains'
+                ? 'Mains Subjects & Optional'
+                : 'All Papers (Prelims + Mains + Optional)'}
             </h2>
             <span className="text-xs text-[var(--foreground-muted)]">
               {filteredRollups.length} subjects
