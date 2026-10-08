@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/supabase/auth-context';
 import { SubtopicUserProgress } from '@/types/syllabus';
 import { getRevisionHealthSummary } from '@/lib/revision/revision-engine';
 import { RevisionManagerSheet } from '@/components/revision/RevisionManagerSheet';
-import { WeeklyHoursChart } from '@/components/analytics/WeeklyHoursChart';
+import { WeeklyHoursChart, DayHourData } from '@/components/analytics/WeeklyHoursChart';
 import { SubjectBalanceCard } from '@/components/analytics/SubjectBalanceCard';
 import { StageProgressCards } from '@/components/analytics/StageProgressCards';
 import { ConsistencyHeatmap } from '@/components/analytics/ConsistencyHeatmap';
@@ -142,9 +142,6 @@ export default function ProgressPage() {
     return {};
   });
 
-  const totalActualWeek = mockWeeklyHours.reduce((sum, d) => sum + d.actual, 0);
-  const totalPlannedWeek = mockWeeklyHours.reduce((sum, d) => sum + d.planned, 0);
-
   // Compute live revision health summary
   const healthSummary = getRevisionHealthSummary({
     progressMap,
@@ -157,6 +154,23 @@ export default function ProgressPage() {
   const activityGrid = streakAnalytics.activityGrid;
   const streakDays = streakAnalytics.currentStreakDays;
   const consistencyPercent = streakAnalytics.consistencyPercent30d;
+
+  const isDemo = typeof window !== 'undefined' && localStorage.getItem('upsc_demo_mode') === 'true';
+  const dailyTargetHours = profile?.daily_target_hours_min || 6.0;
+
+  const weeklyChartData: DayHourData[] = isDemo
+    ? mockWeeklyHours
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
+        const found = streakAnalytics.weeklyHours.find((w) => w.day === day);
+        return {
+          day,
+          planned: dailyTargetHours,
+          actual: found ? found.actualHours : 0,
+        };
+      });
+
+  const totalActualWeek = weeklyChartData.reduce((sum, d) => sum + d.actual, 0);
+  const totalPlannedWeek = weeklyChartData.reduce((sum, d) => sum + d.planned, 0);
 
   // Phase 7 Analytics Engines
   const subjectBalances = computeSubjectBalance(mockSubjectHours, totalActualWeek);
@@ -217,7 +231,7 @@ export default function ProgressPage() {
         </div>
 
         {/* Recharts Planned vs Actual Chart */}
-        <WeeklyHoursChart data={mockWeeklyHours} targetAverage={7.0} />
+        <WeeklyHoursChart data={weeklyChartData} targetAverage={dailyTargetHours} />
       </div>
 
       {/* 2. Spaced Revision Health Card (Interactive Trigger) */}
