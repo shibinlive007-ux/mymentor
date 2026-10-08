@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import {
   generateGroundedMentorReply,
-  MENTOR_QUICK_PROMPTS,
+  getContextualChips,
 } from '@/lib/mentor/mentor-engine';
 import { MentorMessage, MentorUserContext } from '@/types/mentor';
 import { getRevisionHealthSummary } from '@/lib/revision/revision-engine';
@@ -56,10 +56,13 @@ export default function MentorPage() {
 
   // Construct current user context
   const getUserContext = (): MentorUserContext => {
-    let overdueCount = 2;
-    let retentionPercent = 85;
+    let overdueCount = 0;
+    let retentionPercent = 100;
+    let overIndexedSubject: string | undefined;
+    let neglectedSubject: string | undefined;
 
     if (typeof window !== 'undefined') {
+      const isDemo = localStorage.getItem('upsc_demo_mode') === 'true';
       const savedProg = localStorage.getItem('upsc_syllabus_progress');
       if (savedProg) {
         try {
@@ -70,17 +73,25 @@ export default function MentorPage() {
         } catch {
           // fallback
         }
+      } else if (isDemo) {
+        overdueCount = 2;
+        retentionPercent = 85;
+      }
+
+      if (isDemo) {
+        overIndexedSubject = 'Modern History';
+        neglectedSubject = 'Ethics (GS IV)';
       }
     }
 
     return {
       fullName: profile?.full_name || 'Aspirant',
       examMode: examMode || 'combined',
-      streakDays: profile?.streak_count || 14,
+      streakDays: profile?.streak_count || 0,
       overdueCount,
       retentionPercent,
-      overIndexedSubject: 'Modern History',
-      neglectedSubject: 'Ethics (GS IV)',
+      overIndexedSubject,
+      neglectedSubject,
     };
   };
 
@@ -200,20 +211,7 @@ export default function MentorPage() {
         </div>
       </div>
 
-      {/* Quick Topic Chips */}
-      <div className="mb-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {MENTOR_QUICK_PROMPTS.map((qp) => (
-          <button
-            key={qp.id}
-            type="button"
-            onClick={() => handleSendMessage(qp.query)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-[var(--surface)] hover:bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)] shrink-0 transition-all hover:border-[var(--primary)]/40 active:scale-98 shadow-xs"
-          >
-            <span>{qp.icon}</span>
-            <span>{qp.label}</span>
-          </button>
-        ))}
-      </div>
+
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto space-y-3 pr-1">
@@ -309,19 +307,35 @@ export default function MentorPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Box */}
-      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="mt-2 flex items-center gap-2">
+      {/* 2-3 Contextual Guidance Chips */}
+      <div className="pt-2 pb-1.5 flex items-center gap-1.5 flex-wrap">
+        {getContextualChips(getUserContext()).map((chip) => (
+          <button
+            key={chip.id}
+            type="button"
+            onClick={() => handleSendMessage(chip.query)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--surface)] hover:bg-[var(--surface-raised)] text-[var(--foreground)] border border-[var(--border)] transition-all hover:border-[var(--primary)]/50 active:scale-98 shadow-xs"
+          >
+            <span>{chip.icon}</span>
+            <span>{chip.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Clean Single Prompt Box */}
+      <form onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }} className="flex items-center gap-2">
         <input
           type="text"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Ask for advice, re-plan your day, or explore PYQ trends..."
-          className="flex-1 px-3.5 py-2.5 text-xs bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:border-[var(--primary)] transition-all shadow-xs outline-none"
+          className="flex-1 px-4 py-3 text-xs bg-[var(--surface)] border border-[var(--border)] rounded-xl text-[var(--foreground)] placeholder:text-[var(--foreground-muted)] focus:border-[var(--primary)] transition-all shadow-xs outline-none"
+          aria-label="Ask My Mentor"
         />
         <button
           type="submit"
           disabled={!inputValue.trim()}
-          className="p-2.5 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs transition-colors flex-shrink-0 disabled:opacity-40"
+          className="p-3 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs transition-colors flex-shrink-0 disabled:opacity-40"
           aria-label="Send message"
         >
           <Send className="w-4 h-4" />

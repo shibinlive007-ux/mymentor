@@ -14,7 +14,6 @@
 import {
   MentorMessage,
   MentorUserContext,
-  MentorCitation,
   MentorPlanProposal,
 } from '@/types/mentor';
 
@@ -63,6 +62,83 @@ export const MENTOR_QUICK_PROMPTS: QuickPrompt[] = [
     query: 'How should I allocate time for CSAT to comfortably cross the 66.7-mark threshold?',
   },
 ];
+
+/**
+ * Generates 2-3 focused contextual chips derived from the aspirant's current state.
+ */
+export function getContextualChips(
+  context: MentorUserContext,
+  activeTaskName?: string
+): QuickPrompt[] {
+  const chips: QuickPrompt[] = [];
+
+  // 1. Revision / Backlog context
+  if (context.overdueCount > 0) {
+    chips.push({
+      id: 'ctx-revisions',
+      icon: '🔄',
+      label: `Prioritize ${context.overdueCount} Backlogs`,
+      query: `How should I catch up on my ${context.overdueCount} overdue revisions without burning out?`,
+    });
+  }
+
+  // 2. Exam mode specific chip
+  if (context.examMode === 'prelims') {
+    chips.push({
+      id: 'ctx-prelims',
+      icon: '🎯',
+      label: 'Prelims High-Yield Topics',
+      query: 'Which topics carry the highest PYQ yield in Prelims GS1?',
+    });
+  } else if (context.examMode === 'mains') {
+    chips.push({
+      id: 'ctx-mains',
+      icon: '✍️',
+      label: 'Mains 10/15 Marker Blueprint',
+      query: 'How should I structure a 10-marker and 15-marker Mains answer for GS papers?',
+    });
+  } else {
+    // Combined mode
+    if (activeTaskName) {
+      chips.push({
+        id: 'ctx-active-task',
+        icon: '🎯',
+        label: `Clarify: ${activeTaskName.length > 20 ? activeTaskName.slice(0, 18) + '...' : activeTaskName}`,
+        query: `Explain key conceptual nuances and PYQ focus points for ${activeTaskName}.`,
+      });
+    } else {
+      chips.push({
+        id: 'ctx-balance',
+        icon: '📊',
+        label: 'Analyze Study Balance',
+        query: 'Analyze my current preparation balance, streak, and revision backlogs.',
+      });
+    }
+  }
+
+  // 3. Neglected subject
+  if (context.neglectedSubject && chips.length < 3) {
+    chips.push({
+      id: 'ctx-neglected',
+      icon: '⚖️',
+      label: `Catch up: ${context.neglectedSubject}`,
+      query: `How should I allocate time to bridge my gap in ${context.neglectedSubject}?`,
+    });
+  }
+
+  // 4. Low energy fallback
+  if (chips.length < 3) {
+    chips.push({
+      id: 'ctx-fatigue',
+      icon: '🛡️',
+      label: 'Low Energy / Fatigue',
+      query: "I'm feeling fatigued and overwhelmed today. How can I adjust my schedule without guilt?",
+    });
+  }
+
+  // Strictly 2-3 chips
+  return chips.slice(0, 3);
+}
 
 export function generateGroundedMentorReply(
   query: string,
