@@ -57,7 +57,8 @@ export function SubtopicDetailSheet({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 rounded-full text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+              aria-label="Close subtopic details"
+              className="p-1.5 rounded-full text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
             >
               <X className="w-5 h-5" />
             </button>

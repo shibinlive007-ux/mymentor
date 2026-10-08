@@ -153,7 +153,8 @@ export function StudyTimerWidget({
             <button
               type="button"
               onClick={pauseTimer}
-              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-xs transition-colors hover:bg-amber-500/20 active:scale-98"
+              aria-label="Pause study timer"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-semibold text-xs transition-colors hover:bg-amber-500/20 active:scale-98 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-500"
             >
               <Pause className="w-3.5 h-3.5" />
               <span>Pause</span>
@@ -162,7 +163,8 @@ export function StudyTimerWidget({
             <button
               type="button"
               onClick={startTimer}
-              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs shadow-md transition-all active:scale-98"
+              aria-label="Start study timer"
+              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white font-bold text-xs shadow-md transition-all active:scale-98 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
               <span>Start</span>
@@ -172,8 +174,9 @@ export function StudyTimerWidget({
           <button
             type="button"
             onClick={resetTimer}
-            className="p-2 rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+            aria-label="Reset study timer"
             title="Reset timer"
+            className="p-2 rounded-xl border border-[var(--border)] text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -183,8 +186,9 @@ export function StudyTimerWidget({
             <button
               type="button"
               onClick={handleFinishAndLog}
-              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors active:scale-98 animate-fadeIn"
+              aria-label="Save session and credit minutes"
               title="Save session and credit minutes"
+              className="flex items-center gap-1 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors active:scale-98 animate-fadeIn focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-emerald-500"
             >
               <CheckCircle className="w-3.5 h-3.5" />
               <span>Log &amp; Done</span>

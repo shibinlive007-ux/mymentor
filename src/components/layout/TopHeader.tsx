@@ -84,7 +84,8 @@ export function TopHeader() {
           <Link
             href="/settings"
             aria-label="Settings"
-            className="p-1.5 rounded-full text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors"
+            title="Settings"
+            className="flex items-center justify-center p-2 rounded-xl border border-[var(--border)] bg-[var(--surface-raised)]/60 text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
           >
             <Settings className="w-4 h-4" />
           </Link>

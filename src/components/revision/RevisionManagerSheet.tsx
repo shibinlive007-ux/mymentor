@@ -81,7 +81,8 @@ export function RevisionManagerSheet({
             <button
               type="button"
               onClick={onClose}
-              className="p-1 rounded-full text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)]"
+              aria-label="Close revision manager"
+              className="p-1.5 rounded-full text-[var(--foreground-muted)] hover:text-[var(--foreground)] hover:bg-[var(--surface-hover)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
             >
               <X className="w-4 h-4" />
             </button>
