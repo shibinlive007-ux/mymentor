@@ -10,7 +10,8 @@ import {
 } from '@/lib/syllabus/seed-loader';
 import { SubtopicUserProgress, SubtopicNode } from '@/types/syllabus';
 import { SubtopicDetailSheet } from '@/components/syllabus/SubtopicDetailSheet';
-import { calculateStageRollups } from '@/lib/completion';
+import { QuickSubtopicModal } from '@/components/syllabus/QuickSubtopicModal';
+import { calculateStageRollups, filterUserSyllabusSubjects } from '@/lib/completion';
 import {
   Search,
   Zap,
@@ -29,77 +30,30 @@ function getInitialProgressMap(): Record<string, SubtopicUserProgress> {
     }
   }
 
-  // Pre-seed mock progress for demonstration
-  const map: Record<string, SubtopicUserProgress> = {};
-  // 1857 Revolt completed
-  map['p-hist-mod-1'] = {
-    subtopicId: 'p-hist-mod-1',
-    ncertRead: true,
-    standardBookRead: true,
-    standardBookName: 'Spectrum Ch 5-7',
-    coachingAttended: true,
-    extraSources: '',
-    notesMade: true,
-    currentAffairsLinked: true,
-    pyqSolvedCount: 15,
-    mcqPracticeDone: true,
-    revisionCount: 2,
-    lastRevisedAt: new Date().toISOString(),
-    confidenceScore: 4,
-    completionPercentage: 93.3,
-  };
-  // Fundamental Rights
-  map['p-pol-2'] = {
-    subtopicId: 'p-pol-2',
-    ncertRead: true,
-    standardBookRead: true,
-    standardBookName: 'Laxmikanth Ch 7',
-    coachingAttended: true,
-    extraSources: '',
-    notesMade: true,
-    currentAffairsLinked: true,
-    pyqSolvedCount: 25,
-    mcqPracticeDone: true,
-    revisionCount: 1,
-    lastRevisedAt: new Date().toISOString(),
-    confidenceScore: 5,
-    completionPercentage: 86.7,
-  };
-  // Harappan Civilization
-  map['p-hist-anc-1'] = {
-    subtopicId: 'p-hist-anc-1',
-    ncertRead: true,
-    standardBookRead: false,
-    standardBookName: '',
-    coachingAttended: false,
-    extraSources: '',
-    notesMade: true,
-    currentAffairsLinked: false,
-    pyqSolvedCount: 5,
-    mcqPracticeDone: true,
-    revisionCount: 1,
-    lastRevisedAt: null,
-    confidenceScore: 3,
-    completionPercentage: 51.7,
-  };
-
-  return map;
+  // Task 5: Never use fake/seeded numbers on real user records
+  return {};
 }
 
 export default function SyllabusPage() {
   const { examMode, profile } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
-  const [activeSubtopic, setActiveSubtopic] = useState<SubtopicNode | null>(null);
+  const [quickModalSubtopic, setQuickModalSubtopic] = useState<SubtopicNode | null>(null);
+  const [activeDetailSubtopic, setActiveDetailSubtopic] = useState<SubtopicNode | null>(null);
   const [quickUpdateMode, setQuickUpdateMode] = useState(false);
 
   // User progress state across subtopics
   const [progressMap, setProgressMap] = useState<Record<string, SubtopicUserProgress>>(getInitialProgressMap);
 
-  // Filter subjects by active exam mode
-  const currentStageSubjects = ALL_SYLLABUS_SUBJECTS.filter((s) => {
+  // Filter subjects by active exam mode and user optional
+  const userFilteredSubjects = filterUserSyllabusSubjects(
+    ALL_SYLLABUS_SUBJECTS,
+    profile?.optional_subject
+  );
+
+  const currentStageSubjects = userFilteredSubjects.filter((s) => {
     if (examMode === 'prelims') return s.stage === 'prelims' || s.stage === 'csat';
-    if (examMode === 'mains') return s.stage === 'mains';
+    if (examMode === 'mains') return s.stage === 'mains' || s.stage === 'optional';
     return true; // combined shows all
   });
 
@@ -287,7 +241,7 @@ export default function SyllabusPage() {
                           className="p-2.5 rounded-xl bg-[var(--surface-raised)] border border-[var(--border)] hover:border-[var(--primary)]/50 transition-all flex items-center justify-between gap-2"
                         >
                           <div
-                            onClick={() => setActiveSubtopic(sub)}
+                            onClick={() => setQuickModalSubtopic(sub)}
                             className="flex-1 min-w-0 cursor-pointer"
                           >
                             <div className="flex items-center gap-2">
@@ -315,6 +269,7 @@ export default function SyllabusPage() {
                               <button
                                 type="button"
                                 onClick={() => handleQuickTap(sub.id)}
+                                aria-label={`Quick update ${sub.title}`}
                                 className="px-2.5 py-1 rounded-lg bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white text-[11px] font-semibold transition-colors flex items-center gap-1"
                               >
                                 ⚡ +Progress
@@ -322,8 +277,9 @@ export default function SyllabusPage() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() => setActiveSubtopic(sub)}
-                                className="text-xs font-mono font-bold text-[var(--primary)] bg-[var(--surface)] border border-[var(--border)] px-2 py-1 rounded-lg hover:bg-[var(--surface-hover)] transition-colors"
+                                onClick={() => setQuickModalSubtopic(sub)}
+                                aria-label={`Open 2-tap update for ${sub.title}`}
+                                className="text-xs font-mono font-bold text-[var(--primary)] bg-[var(--surface)] border border-[var(--border)] px-2 py-1 rounded-lg hover:bg-[var(--surface-hover)] transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-[var(--primary)]"
                               >
                                 {p.completionPercentage}%
                               </button>
@@ -401,13 +357,29 @@ export default function SyllabusPage() {
         </div>
       )}
 
+      {/* 2-Tap Quick Update Modal */}
+      {quickModalSubtopic && (
+        <QuickSubtopicModal
+          isOpen={Boolean(quickModalSubtopic)}
+          subtopic={quickModalSubtopic}
+          progress={progressMap[quickModalSubtopic.id] || getDefaultSubtopicProgress(quickModalSubtopic.id)}
+          onClose={() => setQuickModalSubtopic(null)}
+          onUpdate={(upd) => handleUpdateSubtopicProgress(quickModalSubtopic.id, upd)}
+          onOpenFullDetails={() => {
+            const sub = quickModalSubtopic;
+            setQuickModalSubtopic(null);
+            setActiveDetailSubtopic(sub);
+          }}
+        />
+      )}
+
       {/* Subtopic Detail Sheet Modal */}
-      {activeSubtopic && (
+      {activeDetailSubtopic && (
         <SubtopicDetailSheet
-          subtopic={activeSubtopic}
-          progress={progressMap[activeSubtopic.id] || getDefaultSubtopicProgress(activeSubtopic.id)}
-          onUpdate={(upd) => handleUpdateSubtopicProgress(activeSubtopic.id, upd)}
-          onClose={() => setActiveSubtopic(null)}
+          subtopic={activeDetailSubtopic}
+          progress={progressMap[activeDetailSubtopic.id] || getDefaultSubtopicProgress(activeDetailSubtopic.id)}
+          onUpdate={(upd) => handleUpdateSubtopicProgress(activeDetailSubtopic.id, upd)}
+          onClose={() => setActiveDetailSubtopic(null)}
         />
       )}
     </div>
