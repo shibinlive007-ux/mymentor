@@ -150,7 +150,18 @@ export default function ProgressPage() {
 
   // Real session analytics (eliminates streak and heatmap contradiction)
   const [sessions] = useState(() => (typeof window !== 'undefined' ? getAllSessions() : []));
-  const streakAnalytics = calculateStreakAndConsistency(sessions, new Date(), 1);
+  const [plannedRestDates] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('upsc_planned_rest_days');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {}
+      }
+    }
+    return [];
+  });
+  const streakAnalytics = calculateStreakAndConsistency(sessions, new Date(), 1, plannedRestDates);
   const activityGrid = streakAnalytics.activityGrid;
   const streakDays = streakAnalytics.currentStreakDays;
   const consistencyPercent = streakAnalytics.consistencyPercent30d;
@@ -162,9 +173,10 @@ export default function ProgressPage() {
     ? mockWeeklyHours
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => {
         const found = streakAnalytics.weeklyHours.find((w) => w.day === day);
+        // Realistic weekly target: 6 active study days per week, planned rest on Sunday
         return {
           day,
-          planned: dailyTargetHours,
+          planned: day === 'Sun' ? 0 : dailyTargetHours,
           actual: found ? found.actualHours : 0,
         };
       });

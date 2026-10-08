@@ -58,6 +58,7 @@ export interface DailyPlan {
   tasks: PlannerTask[];
   status: PlanStatus;
   isMinimumViableDay: boolean;
+  isRestDay?: boolean;
   targetHours: number;
   totalPlannedMinutes: number;
   totalCompletedMinutes: number;

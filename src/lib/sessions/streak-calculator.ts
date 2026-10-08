@@ -30,7 +30,8 @@ export interface StreakAnalyticsResult {
 export function calculateStreakAndConsistency(
   sessions: StudySession[] = [],
   anchorDate: Date = new Date(),
-  restDaysAllowedPerWeek: number = 1
+  restDaysAllowedPerWeek: number = 1,
+  plannedRestDates: string[] = []
 ): StreakAnalyticsResult {
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const activityGrid: DailyActivityRecord[] = [];
@@ -98,10 +99,13 @@ export function calculateStreakAndConsistency(
     if (minutes > 0) {
       currentStreakDays += 1;
     } else {
-      // Check if we can bridge with a planned rest day (max restDaysAllowedPerWeek per 7-day window)
-      if (restDaysUsedInCurrentWeek < restDaysAllowedPerWeek && currentStreakDays > 0) {
-        restDaysUsedInCurrentWeek += 1;
-        // Rest day preserves the streak without incrementing the studied days
+      const isExplicitRest = plannedRestDates.includes(dateKey);
+      // Check if we can bridge with an explicit or planned rest day (max restDaysAllowedPerWeek per week unless explicit)
+      if ((isExplicitRest || restDaysUsedInCurrentWeek < restDaysAllowedPerWeek) && currentStreakDays > 0) {
+        if (!isExplicitRest) {
+          restDaysUsedInCurrentWeek += 1;
+        }
+        // Rest day preserves the streak without breaking it
       } else {
         break; // streak ends
       }

@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   History,
   RotateCcw,
+  Coffee,
   X
 } from 'lucide-react';
 import Link from 'next/link';
@@ -233,6 +234,7 @@ export default function TodayPage() {
   // Modals state
   const [isCheckinOpen, setIsCheckinOpen] = useState<boolean>(false);
   const [isWrapupOpen, setIsWrapupOpen] = useState<boolean>(false);
+  const [isRestModalOpen, setIsRestModalOpen] = useState<boolean>(false);
   const [editingTask, setEditingTask] = useState<PlannerTask | null>(null);
 
   // Encouragement notification banner
@@ -583,6 +585,112 @@ export default function TodayPage() {
     });
   };
 
+  // Rest Day / Low Energy Handlers
+  const handleActivateRestDay = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const savedRest = typeof window !== 'undefined' ? localStorage.getItem('upsc_planned_rest_days') : null;
+    let restDates: string[] = [];
+    if (savedRest) {
+      try {
+        restDates = JSON.parse(savedRest);
+      } catch {}
+    }
+    if (!restDates.includes(todayStr)) {
+      restDates.push(todayStr);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('upsc_planned_rest_days', JSON.stringify(restDates));
+      }
+    }
+
+    const restPlan: DailyPlan = {
+      ...plan,
+      isRestDay: true,
+      tasks: [],
+      totalPlannedMinutes: 0,
+      totalCompletedMinutes: 0,
+      status: 'accepted',
+      mentorRationale:
+        'Planned rest day taken with zero guilt. Your streak is protected. Rest is when memory consolidation occurs.',
+      updatedAt: new Date().toISOString(),
+    };
+    updatePlan(restPlan);
+    setIsRestModalOpen(false);
+    setEncouragement({
+      title: '🌿 Rest Day Activated (Streak Protected)',
+      body: 'Rest is not time lost—it is when memories consolidate. Sleep deeply, stay hydrated, and come back clear tomorrow.',
+      category: 'rest',
+    });
+  };
+
+  const handleActivateMVD = () => {
+    const mvdPlan: DailyPlan = {
+      ...plan,
+      isMinimumViableDay: true,
+      isRestDay: false,
+      status: 'accepted',
+      tasks: [
+        {
+          id: `task-mvd-rev-${Date.now()}`,
+          subjectId: 'spaced-revision',
+          subjectName: 'High-Yield Revision',
+          topicId: 'mvd-rev',
+          topicTitle: 'Core Spaced Revision Review (Light Touch)',
+          taskType: 'revision',
+          durationMinutes: 45,
+          completedMinutes: 0,
+          status: 'pending',
+          reason: 'Minimum Viable Day: Preserving continuity on low energy without cognitive overload',
+          orderIndex: 1,
+        },
+        {
+          id: `task-mvd-ca-${Date.now()}`,
+          subjectId: 'current-affairs',
+          subjectName: 'Current Affairs',
+          topicId: 'mvd-ca',
+          topicTitle: 'Daily Editorial Summary Scan',
+          taskType: 'current_affairs',
+          durationMinutes: 45,
+          completedMinutes: 0,
+          status: 'pending',
+          reason: 'Minimum Viable Day: Essential daily news connection',
+          orderIndex: 2,
+        },
+      ],
+      totalPlannedMinutes: 90,
+      totalCompletedMinutes: 0,
+      mentorRationale:
+        'Minimum Viable Day activated. Only 1.5 hours of light study scheduled to protect your energy and consistency.',
+      updatedAt: new Date().toISOString(),
+    };
+    updatePlan(mvdPlan);
+    setIsRestModalOpen(false);
+    setEncouragement({
+      title: '⚡ Minimum Viable Day Activated',
+      body: 'Low energy honored. Just 90 minutes of light work to maintain rhythm without burnout.',
+      category: 'streak',
+    });
+  };
+
+  const handleResumeStudying = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (typeof window !== 'undefined') {
+      const savedRest = localStorage.getItem('upsc_planned_rest_days');
+      if (savedRest) {
+        try {
+          const restDates: string[] = JSON.parse(savedRest);
+          const filtered = restDates.filter((d) => d !== todayStr);
+          localStorage.setItem('upsc_planned_rest_days', JSON.stringify(filtered));
+        } catch {}
+      }
+    }
+    const updated: DailyPlan = {
+      ...plan,
+      isRestDay: false,
+      updatedAt: new Date().toISOString(),
+    };
+    updatePlan(updated);
+  };
+
   // Calculations
   const totalPlannedMinutes = plan.tasks.reduce((sum, t) => sum + t.durationMinutes, 0);
   const totalCompletedMinutes = plan.tasks.reduce((sum, t) => sum + t.completedMinutes, 0);
@@ -640,6 +748,15 @@ export default function TodayPage() {
               <Moon className="w-3.5 h-3.5" />
               <span>Wrap Up</span>
             </button>
+            <button
+              type="button"
+              onClick={() => setIsRestModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 transition-colors shadow-xs"
+              title="Low energy or take a planned rest day"
+            >
+              <Coffee className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span className="hidden sm:inline">Rest Day</span>
+            </button>
           </div>
         </div>
       </div>
@@ -673,7 +790,34 @@ export default function TodayPage() {
         />
       )}
 
-      {plan.tasks.length === 0 ? (
+      {plan.isRestDay ? (
+        <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 via-[var(--surface)] to-teal-500/10 p-6 sm:p-8 text-center space-y-4 shadow-xs animate-slideUp">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center mx-auto">
+            <Coffee className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 text-xs font-bold">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Streak Protected • Planned Rest Day</span>
+            </div>
+            <h3 className="text-base font-bold text-[var(--foreground)] mt-2">
+              Rest is an Active Part of Preparation
+            </h3>
+            <p className="text-xs text-[var(--foreground-muted)] max-w-sm mx-auto leading-relaxed">
+              Your study streak remains completely safe. Neural pathways consolidate learning during sleep and rest. Rejuvenate today with zero guilt.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            <button
+              type="button"
+              onClick={handleResumeStudying}
+              className="px-4 py-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] text-[var(--foreground)] text-xs font-semibold hover:bg-[var(--surface-hover)] transition-colors shadow-xs"
+            >
+              Resume Studying Today
+            </button>
+          </div>
+        </div>
+      ) : plan.tasks.length === 0 ? (
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-8 text-center space-y-4 shadow-xs animate-slideUp">
           <div className="w-12 h-12 rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)] flex items-center justify-center mx-auto">
             <Sparkles className="w-6 h-6" />
@@ -1052,6 +1196,78 @@ export default function TodayPage() {
         onAcceptRecoveryProposal={handleAcceptRecoveryProposal}
         onSelectTopicForTimer={handleSelectTopicForTimer}
       />
+
+      {/* Low Energy / Rest Day Modal */}
+      {isRestModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl max-w-md w-full p-5 space-y-4 shadow-xl animate-scaleUp">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                  <Coffee className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-[var(--foreground)]">Feeling Low Energy or Need Rest?</h3>
+                  <p className="text-[11px] text-[var(--foreground-muted)]">No guilt. Choose how to protect your energy.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRestModalOpen(false)}
+                className="p-1 rounded-lg text-[var(--foreground-muted)] hover:text-[var(--foreground)]"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              <div
+                onClick={handleActivateRestDay}
+                className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 cursor-pointer transition-all space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    🌿 Take a Full Rest Day (Streak Protected)
+                  </span>
+                  <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-800 dark:text-emerald-200 px-2 py-0.5 rounded-md">
+                    Zero Guilt
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  Clears today&apos;s schedule and marks today as a planned rest day. Your streak bridges across without breaking.
+                </p>
+              </div>
+
+              <div
+                onClick={handleActivateMVD}
+                className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 cursor-pointer transition-all space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                    ⚡ Minimum Viable Day (90 mins Light Touch)
+                  </span>
+                  <span className="text-[10px] font-semibold bg-amber-500/20 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-md">
+                    Light Continuity
+                  </span>
+                </div>
+                <p className="text-[11px] text-[var(--foreground-muted)]">
+                  Keeps the habit alive with just 1 light revision task and 1 current affairs scan. Protects your cognitive bandwidth.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setIsRestModalOpen(false)}
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold text-[var(--foreground-muted)] hover:bg-[var(--surface-hover)] transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
