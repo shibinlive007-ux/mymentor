@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useSyncExternalStore } from 'react';
 import { Clock } from 'lucide-react';
 import {
   BarChart,
@@ -56,12 +56,14 @@ function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
   return null;
 }
 
-export function WeeklyHoursChart({ data, targetAverage = 7.0 }: WeeklyHoursChartProps) {
-  const [isMounted, setIsMounted] = useState<boolean>(false);
+const emptySubscribe = () => () => {};
 
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+export function WeeklyHoursChart({ data, targetAverage = 7.0 }: WeeklyHoursChartProps) {
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   if (!isMounted) {
     return (

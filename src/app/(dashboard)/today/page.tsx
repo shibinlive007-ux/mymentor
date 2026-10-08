@@ -1,6 +1,4 @@
-'use client';
-
-import React, { useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import { useAuth } from '@/lib/supabase/auth-context';
 import { UPSC_2027_DATES, getDaysUntil } from '@/lib/utils';
 import {
@@ -33,7 +31,6 @@ import { MorningCheckinModal } from '@/components/planner/MorningCheckinModal';
 import { TaskEditModal } from '@/components/planner/TaskEditModal';
 import { StudyTimerWidget } from '@/components/timer/StudyTimerWidget';
 import { EndOfDayWrapupModal } from '@/components/planner/EndOfDayWrapupModal';
-import { RecoveryProposalCard } from '@/components/revision/RecoveryProposalCard';
 import { RevisionManagerSheet } from '@/components/revision/RevisionManagerSheet';
 import {
   getTaskCompletionMessage,
@@ -242,6 +239,7 @@ export default function TodayPage() {
 
   // Active task state
   const [activeTaskId, setActiveTaskId] = useState<string>('');
+
 
   // Countdown calculations
   const daysToPrelims = getDaysUntil(UPSC_2027_DATES.PRELIMS);
@@ -697,6 +695,12 @@ export default function TodayPage() {
   const completionPercent =
     totalPlannedMinutes > 0 ? Math.round((totalCompletedMinutes / totalPlannedMinutes) * 100) : 0;
   const activeTask = plan.tasks.find((t) => t.id === activeTaskId) || plan.tasks[0];
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const isEvening = isClient && (new Date().getHours() >= 18 || completionPercent >= 80);
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-8 animate-fadeIn">
@@ -717,46 +721,77 @@ export default function TodayPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsRevisionSheetOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors shadow-xs"
-              title="Open Spaced Revision Manager"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Revisions</span>
-              {healthSummary.overdueCount > 0 ? (
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {healthSummary.overdueCount > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsRevisionSheetOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 transition-colors shadow-xs"
+                title={`${healthSummary.overdueCount} revisions due`}
+                aria-label="Open revisions manager"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
                 <span className="w-4 h-4 rounded-full bg-amber-500 text-white text-[10px] font-bold flex items-center justify-center">
                   {healthSummary.overdueCount}
                 </span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsCheckinOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface)] hover:bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] transition-colors shadow-xs"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[var(--primary)]" />
-              <span>Check-in</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsWrapupOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 transition-colors shadow-xs"
-            >
-              <Moon className="w-3.5 h-3.5" />
-              <span>Wrap Up</span>
-            </button>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setIsRestModalOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 transition-colors shadow-xs"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 transition-colors shadow-xs flex items-center gap-1"
               title="Low energy or take a planned rest day"
+              aria-label="Rest day or low energy mode"
             >
               <Coffee className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-              <span className="hidden sm:inline">Rest Day</span>
+              <span className="hidden sm:inline">Rest</span>
             </button>
+
+            {/* Context-aware primary check-in vs wrap-up action */}
+            {isEvening ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsCheckinOpen(true)}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold bg-[var(--surface)] hover:bg-[var(--surface-raised)] border border-[var(--border)] text-[var(--foreground)] transition-colors shadow-xs"
+                  title="Run morning check-in"
+                  aria-label="Run morning check-in"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-[var(--primary)]" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsWrapupOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition-all active:scale-98"
+                  aria-label="Start evening wrap-up"
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  <span>Wrap Up</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsCheckinOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[var(--primary)] hover:bg-[var(--primary-hover)] text-white shadow-xs transition-all active:scale-98"
+                  aria-label="Run morning check-in"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Check-in</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsWrapupOpen(true)}
+                  className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border border-indigo-500/30 transition-colors shadow-xs"
+                  title="Evening wrap-up"
+                  aria-label="Start evening wrap-up"
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -778,16 +813,6 @@ export default function TodayPage() {
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
-      )}
-
-      {/* Phase 6: Human-in-the-Loop Backlog Recovery Proposal Card */}
-      {healthSummary.recoveryProposal && healthSummary.recoveryProposal.id !== dismissedProposalId && (
-        <RecoveryProposalCard
-          proposal={healthSummary.recoveryProposal}
-          overdueItems={healthSummary.urgentItems.filter((i) => i.status === 'overdue')}
-          onAccept={handleAcceptRecoveryProposal}
-          onDismiss={(id) => setDismissedProposalId(id)}
-        />
       )}
 
       {plan.isRestDay ? (
@@ -1089,6 +1114,25 @@ export default function TodayPage() {
           })}
         </div>
       </div>
+
+      {/* 5. 1-Line Recovery Banner (Gentle recovery notice without cognitive clutter) */}
+      {healthSummary.recoveryProposal && healthSummary.recoveryProposal.id !== dismissedProposalId && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-3.5 flex items-center justify-between gap-3 text-xs text-amber-950 dark:text-amber-200 shadow-xs animate-slideUp">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span className="truncate">
+              <strong className="font-bold">Gentle Recovery:</strong> {healthSummary.recoveryProposal.title}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsRevisionSheetOpen(true)}
+            className="shrink-0 px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors active:scale-98"
+          >
+            Review Plan ➔
+          </button>
+        </div>
+      )}
     </>
   )}
 
