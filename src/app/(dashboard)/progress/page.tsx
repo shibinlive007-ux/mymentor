@@ -21,7 +21,10 @@ import { calculateStreakAndConsistency } from '@/lib/sessions/streak-calculator'
 import { PyqTrackingSummary } from '@/types/analytics';
 import {
   RotateCcw,
-  ArrowRight
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  BarChart3,
 } from 'lucide-react';
 
 const mockWeeklyHours = [
@@ -122,6 +125,7 @@ const DEFAULT_SAMPLE_PROGRESS: Record<string, SubtopicUserProgress> = {
 export default function ProgressPage() {
   const { examMode, profile } = useAuth();
   const [isRevisionSheetOpen, setIsRevisionSheetOpen] = useState(false);
+  const [showDetailedAnalytics, setShowDetailedAnalytics] = useState(false);
 
   // User syllabus progress map
   const [progressMap, setProgressMap] = useState<Record<string, SubtopicUserProgress>>(() => {
@@ -217,7 +221,7 @@ export default function ProgressPage() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-10 animate-fadeIn">
-      {/* 1. High-Level Summary Header */}
+      {/* 1. Primary Card 1: Weekly Volume & Target Ring Overview */}
       <div className="rounded-2xl p-4 sm:p-5 bg-gradient-to-br from-[var(--surface-raised)] to-[var(--surface)] border border-[var(--border)] shadow-xs">
         <div className="flex items-center justify-between">
           <div>
@@ -246,7 +250,18 @@ export default function ProgressPage() {
         <WeeklyHoursChart data={weeklyChartData} targetAverage={dailyTargetHours} />
       </div>
 
-      {/* 2. Spaced Revision Health Card (Interactive Trigger) */}
+      {/* 2. Primary Card 2: 30-Day Consistency Heatmap & Routine */}
+      <ConsistencyHeatmap
+        activityGrid={activityGrid}
+        streakDays={streakDays}
+        consistencyPercent={consistencyPercent}
+        pyqSummary={mockPyqSummary}
+      />
+
+      {/* 3. Primary Card 3: Stage-Wise Syllabus Progress Rollups */}
+      <StageProgressCards stages={stageRollups} />
+
+      {/* 4. Primary Card 4: Spaced Revision Health Card (Interactive Trigger) */}
       <div
         onClick={() => setIsRevisionSheetOpen(true)}
         className="rounded-2xl p-4 bg-[var(--surface)] border border-[var(--border)] shadow-xs hover:border-[var(--primary)]/60 cursor-pointer transition-all space-y-2.5 group"
@@ -297,25 +312,42 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {/* 3. Stage-Wise Syllabus Coverage Rollup Cards */}
-      <StageProgressCards stages={stageRollups} />
+      {/* 5. Progressive Disclosure: Secondary Metrics Tucked Behind "See More" */}
+      <div className="pt-1">
+        <button
+          type="button"
+          onClick={() => setShowDetailedAnalytics(!showDetailedAnalytics)}
+          aria-expanded={showDetailedAnalytics}
+          className="w-full flex items-center justify-between p-3.5 rounded-2xl border border-[var(--border)] bg-[var(--surface-raised)]/70 hover:bg-[var(--surface-raised)] transition-all shadow-xs text-xs font-semibold text-[var(--foreground)] active:scale-99"
+        >
+          <div className="flex items-center gap-2.5">
+            <BarChart3 className="w-4 h-4 text-[var(--primary)]" />
+            <span>Detailed Analytics &amp; Strategic Review</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[var(--foreground-muted)] text-[11px]">
+            <span>{showDetailedAnalytics ? 'Hide' : 'See More'}</span>
+            {showDetailedAnalytics ? (
+              <ChevronUp className="w-3.5 h-3.5" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5" />
+            )}
+          </div>
+        </button>
 
-      {/* 4. Subject Balance & 35% Cap Guardrail Card */}
-      <SubjectBalanceCard metrics={subjectBalances} />
+        {/* Secondary Metrics Accordion Body */}
+        {showDetailedAnalytics && (
+          <div className="mt-4 space-y-4 sm:space-y-5 animate-fadeIn">
+            {/* Subject Balance & 35% Cap Guardrail Card */}
+            <SubjectBalanceCard metrics={subjectBalances} />
 
-      {/* 5. 30-Day Consistency Heatmap & PYQ Tracker */}
-      <ConsistencyHeatmap
-        activityGrid={activityGrid}
-        streakDays={streakDays}
-        consistencyPercent={consistencyPercent}
-        pyqSummary={mockPyqSummary}
-      />
-
-      {/* 6. Grounded Weekly Strategic Mentor Review */}
-      <WeeklyStrategicReviewCard
-        review={weeklyReview}
-        onRefreshReview={handleRefreshReview}
-      />
+            {/* Grounded Weekly Strategic Mentor Review */}
+            <WeeklyStrategicReviewCard
+              review={weeklyReview}
+              onRefreshReview={handleRefreshReview}
+            />
+          </div>
+        )}
+      </div>
 
       {/* Spaced Revision Sheet Modal */}
       <RevisionManagerSheet
